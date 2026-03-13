@@ -1,4 +1,3 @@
-# money.py
 import pygame
 
 class MoneySystem:
@@ -15,13 +14,13 @@ class MoneySystem:
         if current_time - self.last_update >= self.interval:
             self.money += self.increment
             self.last_update = current_time
-            # Add a floating coin animation at fixed money display
+            # floating coin animation at fixed position
             self.animations.append({'amount': self.increment, 'pos':[20, 20], 'alpha':255})
 
-        # Update all floating animations
+        # Update floating animations
         for anim in self.animations[:]:
-            anim['pos'][1] -= 1       # move up
-            anim['alpha'] -= 5        # fade out
+            anim['pos'][1] -= 1       # float up
+            anim['alpha'] -= 5        # fade
             if anim['alpha'] <= 0:
                 self.animations.remove(anim)
 
@@ -32,7 +31,7 @@ class MoneySystem:
 
     def draw(self, surface, font, position=(20, 20)):
         # Draw main money
-        money_surface = font.render(f"Money: ${self.money}", True, (255, 215, 0))  # gold color
+        money_surface = font.render(f"Money: ${self.money}", True, (255, 215, 0))  # gold
         surface.blit(money_surface, position)
 
         # Draw floating animations
