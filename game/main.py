@@ -1,72 +1,85 @@
+# import pygame, sys
+# from pytmx.util_pygame import load_pygame
+
+# pygame.init()
+# screen = pygame.display.set_mode((1280, 720))
+# tmx_data = load_pygame('../assets/world.tmx')
+
+# while True:
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             pygame.quit()
+#             sys.exit()
+
+#     screen.fill(('black'))
+#     pygame.display.update()
+
 import pygame
-from config import *
-from city import City
-from ui import Button
+import pytmx
+import os
 
+# -------------------------
+# Constants
+# -------------------------
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+SCALE = 0.7  # scale tiles down by 50%
+
+# -------------------------
+# Initialize Pygame
+# -------------------------
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("City Defense (SDG Game)")
-clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 28)
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("PeaceBreak Prototype")
 
-city = City()
-build_mode = False
+# -------------------------
+# Load Tiled Map
+# -------------------------
+current_dir = os.path.dirname(os.path.abspath(__file__))  # folder with main.py
+map_path = os.path.join(current_dir, "..", "assets", "world.tmx")
+map_path = os.path.abspath(map_path)
+print("Loading map from:", map_path)
 
-build_button = Button(600, 120, 200, 40, "Build Wall (10)")
-turn_button = Button(600, 180, 200, 40, "End Turn")
+tmx_data = pytmx.util_pygame.load_pygame(map_path)
 
+# -------------------------
+# Font for messages
+# -------------------------
+font = pygame.font.SysFont(None, 36)
+message = ""
+
+# -------------------------
+# Game Loop
+# -------------------------
 running = True
 while running:
-    clock.tick(FPS)
-    screen.fill(WHITE)
+    screen.fill((0, 0, 0))  # clear screen
 
-    # HUD
-    screen.blit(font.render(f"Gold: {city.gold}", True, BLACK), (50, 20))
-    screen.blit(font.render(f"Materials: {city.materials}", True, BLACK), (200, 20))
-    screen.blit(font.render(f"Turn: {city.turn}", True, BLACK), (400, 20))
+    # Draw Tiled map
+    for layer in tmx_data.visible_layers:
+        if isinstance(layer, pytmx.TiledTileLayer):
+            for x, y, gid in layer:
+                tile = tmx_data.get_tile_image_by_gid(gid)
+                if tile:
+                    screen.blit(tile, (x * tmx_data.tilewidth, y * tmx_data.tileheight))
 
-    # Grid
-    for row in range(GRID_SIZE):
-        for col in range(GRID_SIZE):
-            rect = pygame.Rect(
-                GRID_OFFSET_X + col * CELL_SIZE,
-                GRID_OFFSET_Y + row * CELL_SIZE,
-                CELL_SIZE,
-                CELL_SIZE
-            )
-            pygame.draw.rect(screen, GRAY, rect, 1)
+    # Display message if any
+    if message:
+        text_surface = font.render(message, True, (255, 255, 255))
+        screen.blit(text_surface, (10, SCREEN_HEIGHT - 50))
 
-            if city.grid[row][col]:
-                pygame.draw.rect(screen, GREEN, rect.inflate(-10, -10))
+    pygame.display.flip()
 
-    # Buttons
-    build_button.draw(screen)
-    turn_button.draw(screen)
-
+    # -------------------------
+    # Event Handling
+    # -------------------------
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-        if build_button.clicked(event):
-            build_mode = True
-
-        if turn_button.clicked(event):
-            city.next_turn()
-
-        if build_mode and event.type == pygame.MOUSEBUTTONDOWN:
-            mx, my = event.pos
-            for r in range(GRID_SIZE):
-                for c in range(GRID_SIZE):
-                    rect = pygame.Rect(
-                        GRID_OFFSET_X + c * CELL_SIZE,
-                        GRID_OFFSET_Y + r * CELL_SIZE,
-                        CELL_SIZE,
-                        CELL_SIZE
-                    )
-                    if rect.collidepoint(mx, my):
-                        city.build(r, c)
-                        build_mode = False
-
-    pygame.display.flip()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            print(f"Clicked at {mouse_pos}")  # console output
+            message = "Added new building!"   # display on screen
 
 pygame.quit()
