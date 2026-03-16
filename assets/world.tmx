@@ -3,9 +3,9 @@
  <editorsettings>
   <export target="world..tmx" format="tmx"/>
  </editorsettings>
- <tileset firstgid="1" source="../data/tilesets/world_tileset.tsx"/>
- <tileset firstgid="211" source="../data/tilesets/Objects.tsx"/>
- <tileset firstgid="225" source="../data/maps/City.tsx"/>
+ <tileset firstgid="1" source="../assets/data/tilesets/world_tileset.tsx"/>
+ <tileset firstgid="211" source="../assets/data/tilesets/Objects.tsx"/>
+ <tileset firstgid="225" source="../assets/data/maps/City.tsx"/>
  <layer id="1" name="Ground" width="52" height="50">
   <data encoding="csv">
 42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,
