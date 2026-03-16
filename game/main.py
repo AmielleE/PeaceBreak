@@ -10,6 +10,16 @@ import random
 # -------------------------
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 650
+TITLE = "PeaceBreak Prototype"
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (220, 40, 40)
+BRIGHT_RED = (255, 60, 60)
+GREEN = (0, 200, 0)
+DARK_BLUE = (20, 30, 60)
+GOLD = (255, 215, 0)
+GRAY = (180, 180, 180)
 
 # -------------------------
 # Initialize pygame
@@ -17,7 +27,8 @@ SCREEN_HEIGHT = 650
 pygame.init()
 pygame.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("PeaceBreak Prototype")
+pygame.display.set_caption(TITLE)
+clock = pygame.time.Clock()
 
 # -------------------------
 # Load map
@@ -39,9 +50,20 @@ offset_x = (SCREEN_WIDTH - map_pixel_width * SCALE) / 2
 offset_y = (SCREEN_HEIGHT - map_pixel_height * SCALE) / 2
 
 # -------------------------
-# Font
+# Fonts
 # -------------------------
 font = pygame.font.SysFont(None, 36)
+title_font = pygame.font.SysFont(None, 90)
+subtitle_font = pygame.font.SysFont(None, 42)
+button_font = pygame.font.SysFont(None, 48)
+small_font = pygame.font.SysFont(None, 28)
+
+# -------------------------
+# Load title screen image
+# -------------------------
+title_bg_path = os.path.join(current_dir, "..", "assets", "title_screen.png")
+title_bg = pygame.image.load(title_bg_path)
+title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # -------------------------
 # Money system
@@ -70,16 +92,24 @@ message_timer = 0
 # -------------------------
 # Buildings
 # -------------------------
-# key = top-left tile of building
-# value = {"type":..., "level":0-2, "width":tiles, "height":tiles, "tiles":[(x1,y1)...]}
 buildings = {}
+
+# -------------------------
+# Game state
+# -------------------------
+game_state = "title"
+
+# -------------------------
+# Title screen button
+# -------------------------
+play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
 
 # -------------------------
 # Load building images
 # -------------------------
 building_images = {}
 types = ["house", "apt", "hospital", "air", "power", "school"]
-materials = ["brick", "concrete", "gold"]  # 0,1,2
+materials = ["brick", "concrete", "gold"]
 
 for b_type in types:
     building_images[b_type] = []
@@ -88,9 +118,26 @@ for b_type in types:
         img = pygame.image.load(path)
         img = pygame.transform.scale(
             img,
-            (int(tmx_data.tilewidth*SCALE), int(tmx_data.tileheight*SCALE))
+            (int(tmx_data.tilewidth * SCALE), int(tmx_data.tileheight * SCALE))
         )
         building_images[b_type].append(img)
+
+# -------------------------
+# Reset game
+# -------------------------
+def reset_game():
+    global money_system, bombing, player_health, game_over
+    global message, message_timer, buildings
+
+    money_system = MoneySystem(start_amount=50, increment=10, interval=3000)
+    bombing = BombingEvent(interval=30000, damage=20, shake_duration=500)
+    bombing.load_sound(sound_path)
+
+    player_health = 100
+    game_over = False
+    message = ""
+    message_timer = 0
+    buildings = {}
 
 # -------------------------
 # Tile utility functions
@@ -98,16 +145,28 @@ for b_type in types:
 def can_place_building(tile_x, tile_y, width, height):
     for dx in range(width):
         for dy in range(height):
-            if (tile_x+dx, tile_y+dy) in buildings:
+            check_tile = (tile_x + dx, tile_y + dy)
+
+            if check_tile[0] < 0 or check_tile[1] < 0:
+                return False
+            if check_tile[0] >= tmx_data.width or check_tile[1] >= tmx_data.height:
+                return False
+            if check_tile in buildings:
                 return False
     return True
 
 def place_building(tile_x, tile_y, b_type, width=2, height=2):
-    tiles = [(tile_x+dx, tile_y+dy) for dx in range(width) for dy in range(height)]
-    building_data = {"type": b_type, "level": 0, "width": width, "height": height, "tiles": tiles}
+    tiles = [(tile_x + dx, tile_y + dy) for dx in range(width) for dy in range(height)]
+    building_data = {
+        "type": b_type,
+        "level": 0,
+        "width": width,
+        "height": height,
+        "tiles": tiles
+    }
     for t in tiles:
         buildings[t] = building_data
-    buildings[(tile_x, tile_y)] = building_data  # top-left reference
+    buildings[(tile_x, tile_y)] = building_data
 
 # -------------------------
 # Draw tile layers
@@ -120,12 +179,14 @@ def draw_map_offset(dx=0, dy=0):
                 if tile:
                     tile = pygame.transform.scale(
                         tile,
-                        (int(tmx_data.tilewidth*SCALE), int(tmx_data.tileheight*SCALE))
+                        (int(tmx_data.tilewidth * SCALE), int(tmx_data.tileheight * SCALE))
                     )
                     screen.blit(
                         tile,
-                        (offset_x + x*tmx_data.tilewidth*SCALE + dx,
-                         offset_y + y*tmx_data.tileheight*SCALE + dy)
+                        (
+                            offset_x + x * tmx_data.tilewidth * SCALE + dx,
+                            offset_y + y * tmx_data.tileheight * SCALE + dy
+                        )
                     )
 
 # -------------------------
@@ -137,113 +198,164 @@ def draw_buildings_offset(dx=0, dy=0):
         if id(b) in drawn:
             continue
         drawn.add(id(b))
+
         img = building_images[b["type"]][b["level"]]
         img = pygame.transform.scale(
             img,
-            (int(b["width"]*tmx_data.tilewidth*SCALE),
-             int(b["height"]*tmx_data.tileheight*SCALE))
+            (
+                int(b["width"] * tmx_data.tilewidth * SCALE),
+                int(b["height"] * tmx_data.tileheight * SCALE)
+            )
         )
-        top_left = b["tiles"][0]  # first tile is top-left
+        top_left = b["tiles"][0]
         screen.blit(
             img,
-            (offset_x + top_left[0]*tmx_data.tilewidth*SCALE + dx,
-             offset_y + top_left[1]*tmx_data.tileheight*SCALE + dy)
+            (
+                offset_x + top_left[0] * tmx_data.tilewidth * SCALE + dx,
+                offset_y + top_left[1] * tmx_data.tileheight * SCALE + dy
+            )
         )
 
 # -------------------------
 # Draw UI
 # -------------------------
 def draw_ui_offset(dx=0, dy=0):
-    # Money
+    global message
+
     money_system.draw(screen, font)
 
     # Health bar
     bar_x, bar_y = 20 + dx, 60 + dy
     bar_width, bar_height = 200, 20
-    pygame.draw.rect(screen, (255,0,0), (bar_x, bar_y, bar_width, bar_height))
+    pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, bar_width, bar_height))
     current_width = int(bar_width * (player_health / 100))
-    pygame.draw.rect(screen, (0,255,0), (bar_x, bar_y, current_width, bar_height))
-    pygame.draw.rect(screen, (0,0,0), (bar_x, bar_y, bar_width, bar_height), 2)
+    pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, current_width, bar_height))
+    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
 
-    # Messages
-    global message
     if message:
         elapsed = pygame.time.get_ticks() - message_timer
         if elapsed < 2000:
             alpha = 255 - int(elapsed / 2000 * 255)
-            text_surface = font.render(message, True, (255,255,255))
+            text_surface = font.render(message, True, WHITE)
             text_surface.set_alpha(alpha)
-            screen.blit(text_surface, (20 + dx, SCREEN_HEIGHT-40 + dy))
+            screen.blit(text_surface, (20 + dx, SCREEN_HEIGHT - 40 + dy))
         else:
             message = ""
 
-    # Game Over
     if game_over:
-        go_text = font.render("GAME OVER!", True, (255, 0, 0))
-        go_rect = go_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
+        go_text = title_font.render("GAME OVER!", True, RED)
+        go_rect = go_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
         screen.blit(go_text, go_rect)
+
+        restart_text = small_font.render("Press R to return to title screen", True, WHITE)
+        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
+        screen.blit(restart_text, restart_rect)
+
+# -------------------------
+# Draw title screen
+# -------------------------
+def draw_title_screen():
+    mouse_pos = pygame.mouse.get_pos()
+    hovered = play_button.collidepoint(mouse_pos)
+
+    # Draw your custom image
+    screen.blit(title_bg, (0, 0))
+
+    # Optional slight dark overlay so button stands out
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 35))
+    screen.blit(overlay, (0, 0))
+
+    # Red play button
+    button_color = BRIGHT_RED if hovered else RED
+    pygame.draw.rect(screen, button_color, play_button, border_radius=12)
+    pygame.draw.rect(screen, WHITE, play_button, width=3, border_radius=12)
+
+    play_text = button_font.render("PLAY", True, WHITE)
+    play_rect = play_text.get_rect(center=play_button.center)
+    screen.blit(play_text, play_rect)
 
 # -------------------------
 # Main loop
 # -------------------------
 running = True
-shake_offset = (0,0)
+shake_offset = (0, 0)
 
 while running:
     current_time = pygame.time.get_ticks()
 
-    # Update money system
-    if not game_over:
-        money_system.update()
-
-    # Update bombing
-    if not game_over:
-        player_health, shake_offset = bombing.update(player_health)
-        if player_health <= 0:
-            player_health = 0
-            game_over = True
-            message = "GAME OVER!"
-            message_timer = pygame.time.get_ticks()
-
-    # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if not game_over:
-                mouse_pos = pygame.mouse.get_pos()
-                tile_x = int((mouse_pos[0] - offset_x) / (tmx_data.tilewidth * SCALE))
-                tile_y = int((mouse_pos[1] - offset_y) / (tmx_data.tileheight * SCALE))
-                clicked_tile = (tile_x, tile_y)
 
-                # Check if clicking existing building
-                if clicked_tile in buildings:
-                    building = buildings[clicked_tile]
-                    if building["level"] < 2:
-                        building["level"] += 1
-                        message = f"{building['type'].capitalize()} upgraded!"
-                        money_system.change_money(-15, mouse_pos)
-                    else:
-                        message = f"{building['type'].capitalize()} fully upgraded!"
-                else:
-                    # Place new building (2x2 by default)
-                    b_type = random.choice(types)
-                    width, height = 2, 2
-                    if can_place_building(tile_x, tile_y, width, height):
-                        place_building(tile_x, tile_y, b_type, width, height)
-                        message = f"New {b_type} added!"
-                        money_system.change_money(-5, mouse_pos)
-                    else:
-                        message = "Cannot place building here!"
+        elif game_state == "title":
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if play_button.collidepoint(event.pos):
+                    reset_game()
+                    game_state = "game"
 
+            elif event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    reset_game()
+                    game_state = "game"
+
+        elif game_state == "game":
+            if event.type == pygame.KEYDOWN and game_over:
+                if event.key == pygame.K_r:
+                    game_state = "title"
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if not game_over:
+                    mouse_pos = pygame.mouse.get_pos()
+                    tile_x = int((mouse_pos[0] - offset_x) / (tmx_data.tilewidth * SCALE))
+                    tile_y = int((mouse_pos[1] - offset_y) / (tmx_data.tileheight * SCALE))
+                    clicked_tile = (tile_x, tile_y)
+
+                    if 0 <= tile_x < tmx_data.width and 0 <= tile_y < tmx_data.height:
+                        if clicked_tile in buildings:
+                            building = buildings[clicked_tile]
+                            if building["level"] < 2:
+                                building["level"] += 1
+                                message = f"{building['type'].capitalize()} upgraded!"
+                                money_system.change_money(-15, mouse_pos)
+                            else:
+                                message = f"{building['type'].capitalize()} fully upgraded!"
+                        else:
+                            b_type = random.choice(types)
+                            width, height = 2, 2
+                            if can_place_building(tile_x, tile_y, width, height):
+                                place_building(tile_x, tile_y, b_type, width, height)
+                                message = f"New {b_type} added!"
+                                money_system.change_money(-5, mouse_pos)
+                            else:
+                                message = "Cannot place building here!"
+
+                        message_timer = pygame.time.get_ticks()
+
+    if game_state == "title":
+        draw_title_screen()
+
+    elif game_state == "game":
+        if not game_over:
+            money_system.update()
+
+        if not game_over:
+            player_health, shake_offset = bombing.update(player_health)
+            if player_health <= 0:
+                player_health = 0
+                game_over = True
+                message = "GAME OVER!"
                 message_timer = pygame.time.get_ticks()
+        else:
+            shake_offset = (0, 0)
 
-    # Draw everything with shake
-    screen.fill((0,0,0))
-    shake_x, shake_y = shake_offset
-    draw_map_offset(shake_x, shake_y)
-    draw_buildings_offset(shake_x, shake_y)
-    draw_ui_offset(shake_x, shake_y)
+        screen.fill(BLACK)
+        shake_x, shake_y = shake_offset
+        draw_map_offset(shake_x, shake_y)
+        draw_buildings_offset(shake_x, shake_y)
+        draw_ui_offset(shake_x, shake_y)
+
     pygame.display.update()
+    clock.tick(60)
 
 pygame.quit()
