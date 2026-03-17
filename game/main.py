@@ -8,26 +8,24 @@ import random
 # -------------------------
 # Constants
 # -------------------------
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 650
 TITLE = "PeaceBreak Prototype"
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (220, 40, 40)
-BRIGHT_RED = (255, 60, 60)
-GREEN = (0, 200, 0)
+BRIGHT_RED = (255, 70, 70)
 DARK_BLUE = (20, 30, 60)
-GOLD = (255, 215, 0)
-GRAY = (180, 180, 180)
 
 # -------------------------
 # Initialize pygame
 # -------------------------
 pygame.init()
 pygame.mixer.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Temporary display so pytmx can safely use convert()
+screen = pygame.display.set_mode((1, 1))
 pygame.display.set_caption(TITLE)
+
 clock = pygame.time.Clock()
 
 # -------------------------
@@ -39,73 +37,53 @@ map_path = os.path.abspath(map_path)
 tmx_data = pytmx.util_pygame.load_pygame(map_path)
 
 # -------------------------
-# Map scaling
+# Map size
 # -------------------------
 map_pixel_width = tmx_data.width * tmx_data.tilewidth
 map_pixel_height = tmx_data.height * tmx_data.tileheight
-scale_x = SCREEN_WIDTH / map_pixel_width
-scale_y = SCREEN_HEIGHT / map_pixel_height
-SCALE = min(scale_x, scale_y)
-offset_x = (SCREEN_WIDTH - map_pixel_width * SCALE) / 2
-offset_y = (SCREEN_HEIGHT - map_pixel_height * SCALE) / 2
+
+# -------------------------
+# Zoom
+# -------------------------
+SCALE = 0.21
+
+scaled_tile_width = int(tmx_data.tilewidth * SCALE)
+scaled_tile_height = int(tmx_data.tileheight * SCALE)
+scaled_map_width = int(map_pixel_width * SCALE)
+scaled_map_height = int(map_pixel_height * SCALE)
+
+# Final window size matches scaled map
+SCREEN_WIDTH = scaled_map_width
+SCREEN_HEIGHT = scaled_map_height
+
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption(TITLE)
 
 # -------------------------
 # Fonts
 # -------------------------
 font = pygame.font.SysFont(None, 36)
-title_font = pygame.font.SysFont(None, 90)
-subtitle_font = pygame.font.SysFont(None, 42)
+title_font = pygame.font.SysFont(None, 84)
+subtitle_font = pygame.font.SysFont(None, 40)
 button_font = pygame.font.SysFont(None, 48)
 small_font = pygame.font.SysFont(None, 28)
 
 # -------------------------
-# Load title screen image
+# Optional title screen image
 # -------------------------
+title_bg = None
 title_bg_path = os.path.join(current_dir, "..", "assets", "title_screen.png")
-title_bg = pygame.image.load(title_bg_path)
-title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+if os.path.exists(title_bg_path):
+    title_bg = pygame.image.load(title_bg_path).convert()
+    title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # -------------------------
-# Money system
+# Sound path
 # -------------------------
-money_system = MoneySystem(start_amount=50, increment=10, interval=3000)
-
-# -------------------------
-# Bombing system
-# -------------------------
-bombing = BombingEvent(interval=30000, damage=20, shake_duration=500)
 sound_path = os.path.join(current_dir, "..", "assets", "sounds", "explosion.wav")
-bombing.load_sound(sound_path)
 
 # -------------------------
-# Player
-# -------------------------
-player_health = 100
-game_over = False
-
-# -------------------------
-# Messages
-# -------------------------
-message = ""
-message_timer = 0
-
-# -------------------------
-# Buildings
-# -------------------------
-buildings = {}
-
-# -------------------------
-# Game state
-# -------------------------
-game_state = "title"
-
-# -------------------------
-# Title screen button
-# -------------------------
-play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
-
-# -------------------------
-# Load building images
+# Building images
 # -------------------------
 building_images = {}
 types = ["house", "apt", "hospital", "air", "power", "school"]
@@ -115,12 +93,22 @@ for b_type in types:
     building_images[b_type] = []
     for mat in materials:
         path = os.path.join(current_dir, "..", f"assets/buildings/{b_type}_{mat}.png")
-        img = pygame.image.load(path)
-        img = pygame.transform.scale(
-            img,
-            (int(tmx_data.tilewidth * SCALE), int(tmx_data.tileheight * SCALE))
-        )
+        img = pygame.image.load(path).convert_alpha()
         building_images[b_type].append(img)
+
+# -------------------------
+# Game state variables
+# -------------------------
+money_system = None
+bombing = None
+player_health = 100
+game_over = False
+message = ""
+message_timer = 0
+buildings = {}
+game_state = "title"
+
+play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
 
 # -------------------------
 # Reset game
@@ -166,58 +154,69 @@ def place_building(tile_x, tile_y, b_type, width=2, height=2):
     }
     for t in tiles:
         buildings[t] = building_data
-    buildings[(tile_x, tile_y)] = building_data
 
 # -------------------------
-# Draw tile layers
+# Scale helper
+# -------------------------
+def scale_surface(surface, scale):
+    w = max(1, int(surface.get_width() * scale))
+    h = max(1, int(surface.get_height() * scale))
+    return pygame.transform.scale(surface, (w, h))
+
+# -------------------------
+# Draw map layers
 # -------------------------
 def draw_map_offset(dx=0, dy=0):
     for layer in tmx_data.visible_layers:
         if isinstance(layer, pytmx.TiledTileLayer):
             for x, y, gid in layer:
+                if gid == 0:
+                    continue
+
                 tile = tmx_data.get_tile_image_by_gid(gid)
-                if tile:
-                    tile = pygame.transform.scale(
-                        tile,
-                        (int(tmx_data.tilewidth * SCALE), int(tmx_data.tileheight * SCALE))
-                    )
-                    screen.blit(
-                        tile,
-                        (
-                            offset_x + x * tmx_data.tilewidth * SCALE + dx,
-                            offset_y + y * tmx_data.tileheight * SCALE + dy
-                        )
-                    )
+                if not tile:
+                    continue
+
+                scaled_tile = scale_surface(tile, SCALE)
+                img_w = scaled_tile.get_width()
+                img_h = scaled_tile.get_height()
+
+                # Bottom-align sprite to tile like Tiled
+                draw_x = x * scaled_tile_width + dx
+                draw_y = (y + 1) * scaled_tile_height - img_h + dy
+
+                if draw_x > SCREEN_WIDTH or draw_x + img_w < 0:
+                    continue
+                if draw_y > SCREEN_HEIGHT or draw_y + img_h < 0:
+                    continue
+
+                screen.blit(scaled_tile, (draw_x, draw_y))
 
 # -------------------------
 # Draw buildings
 # -------------------------
 def draw_buildings_offset(dx=0, dy=0):
     drawn = set()
+
     for b in buildings.values():
         if id(b) in drawn:
             continue
         drawn.add(id(b))
 
         img = building_images[b["type"]][b["level"]]
-        img = pygame.transform.scale(
-            img,
-            (
-                int(b["width"] * tmx_data.tilewidth * SCALE),
-                int(b["height"] * tmx_data.tileheight * SCALE)
-            )
-        )
+
+        draw_width = int(b["width"] * scaled_tile_width)
+        draw_height = int(b["height"] * scaled_tile_height)
+        img = pygame.transform.scale(img, (draw_width, draw_height))
+
         top_left = b["tiles"][0]
-        screen.blit(
-            img,
-            (
-                offset_x + top_left[0] * tmx_data.tilewidth * SCALE + dx,
-                offset_y + top_left[1] * tmx_data.tileheight * SCALE + dy
-            )
-        )
+        draw_x = top_left[0] * scaled_tile_width + dx
+        draw_y = top_left[1] * scaled_tile_height + dy
+
+        screen.blit(img, (draw_x, draw_y))
 
 # -------------------------
-# Draw UI
+# Draw game UI
 # -------------------------
 def draw_ui_offset(dx=0, dy=0):
     global message
@@ -243,6 +242,10 @@ def draw_ui_offset(dx=0, dy=0):
             message = ""
 
     if game_over:
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        screen.blit(overlay, (0, 0))
+
         go_text = title_font.render("GAME OVER!", True, RED)
         go_rect = go_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
         screen.blit(go_text, go_rect)
@@ -258,15 +261,22 @@ def draw_title_screen():
     mouse_pos = pygame.mouse.get_pos()
     hovered = play_button.collidepoint(mouse_pos)
 
-    # Draw your custom image
-    screen.blit(title_bg, (0, 0))
+    if title_bg:
+        screen.blit(title_bg, (0, 0))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 35))
+        screen.blit(overlay, (0, 0))
+    else:
+        screen.fill(DARK_BLUE)
 
-    # Optional slight dark overlay so button stands out
-    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 35))
-    screen.blit(overlay, (0, 0))
+        title_text = title_font.render("PeaceBreak", True, WHITE)
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 120))
+        screen.blit(title_text, title_rect)
 
-    # Red play button
+        subtitle_text = subtitle_font.render("Rebuild. Survive. Resist.", True, WHITE)
+        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 55))
+        screen.blit(subtitle_text, subtitle_rect)
+
     button_color = BRIGHT_RED if hovered else RED
     pygame.draw.rect(screen, button_color, play_button, border_radius=12)
     pygame.draw.rect(screen, WHITE, play_button, width=3, border_radius=12)
@@ -276,14 +286,17 @@ def draw_title_screen():
     screen.blit(play_text, play_rect)
 
 # -------------------------
+# Initial reset
+# -------------------------
+reset_game()
+
+# -------------------------
 # Main loop
 # -------------------------
 running = True
 shake_offset = (0, 0)
 
 while running:
-    current_time = pygame.time.get_ticks()
-
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -306,9 +319,10 @@ while running:
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if not game_over:
-                    mouse_pos = pygame.mouse.get_pos()
-                    tile_x = int((mouse_pos[0] - offset_x) / (tmx_data.tilewidth * SCALE))
-                    tile_y = int((mouse_pos[1] - offset_y) / (tmx_data.tileheight * SCALE))
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+                    tile_x = int(mouse_x / scaled_tile_width)
+                    tile_y = int(mouse_y / scaled_tile_height)
                     clicked_tile = (tile_x, tile_y)
 
                     if 0 <= tile_x < tmx_data.width and 0 <= tile_y < tmx_data.height:
@@ -317,7 +331,7 @@ while running:
                             if building["level"] < 2:
                                 building["level"] += 1
                                 message = f"{building['type'].capitalize()} upgraded!"
-                                money_system.change_money(-15, mouse_pos)
+                                money_system.change_money(-15, (mouse_x, mouse_y))
                             else:
                                 message = f"{building['type'].capitalize()} fully upgraded!"
                         else:
@@ -326,7 +340,7 @@ while running:
                             if can_place_building(tile_x, tile_y, width, height):
                                 place_building(tile_x, tile_y, b_type, width, height)
                                 message = f"New {b_type} added!"
-                                money_system.change_money(-5, mouse_pos)
+                                money_system.change_money(-5, (mouse_x, mouse_y))
                             else:
                                 message = "Cannot place building here!"
 
@@ -339,7 +353,6 @@ while running:
         if not game_over:
             money_system.update()
 
-        if not game_over:
             player_health, shake_offset = bombing.update(player_health)
             if player_health <= 0:
                 player_health = 0
