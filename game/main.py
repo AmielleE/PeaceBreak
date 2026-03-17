@@ -45,7 +45,7 @@ map_pixel_height = tmx_data.height * tmx_data.tileheight
 # -------------------------
 # Zoom
 # -------------------------
-SCALE = 0.21
+SCALE = 0.28
 
 scaled_tile_width = int(tmx_data.tilewidth * SCALE)
 scaled_tile_height = int(tmx_data.tileheight * SCALE)
