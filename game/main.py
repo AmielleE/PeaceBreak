@@ -59,7 +59,7 @@ small_font = pygame.font.SysFont(None, 28)
 
 # Title screen image
 title_bg = None
-title_bg_path = os.path.join(current_dir, "..", "assets", "title_screen.png")
+title_bg_path = os.path.join(current_dir, "..", "assets", "images", "title_screen.png")
 if os.path.exists(title_bg_path):
     title_bg = pygame.image.load(title_bg_path).convert()
     title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
