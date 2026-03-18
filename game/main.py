@@ -14,6 +14,11 @@ BLACK = (0, 0, 0)
 RED = (220, 40, 40)
 BRIGHT_RED = (255, 70, 70)
 DARK_BLUE = (20, 30, 60)
+GOLD = (255, 215, 0)
+LIGHT_WOOD = (156, 104, 64)
+DARK_WOOD = (92, 55, 30)
+PANEL_BROWN = (70, 40, 20)
+HIGHLIGHT = (255, 230, 120)
 
 # Initialize pygame
 pygame.init()
@@ -36,7 +41,7 @@ map_pixel_width = tmx_data.width * tmx_data.tilewidth
 map_pixel_height = tmx_data.height * tmx_data.tileheight
 
 # Zoom
-SCALE = 0.28
+SCALE = 0.27
 
 scaled_tile_width = int(tmx_data.tilewidth * SCALE)
 scaled_tile_height = int(tmx_data.tileheight * SCALE)
@@ -56,6 +61,8 @@ title_font = pygame.font.SysFont(None, 84)
 subtitle_font = pygame.font.SysFont(None, 40)
 button_font = pygame.font.SysFont(None, 48)
 small_font = pygame.font.SysFont(None, 28)
+tiny_font = pygame.font.SysFont(None, 20)
+menu_title_font = pygame.font.SysFont(None, 30)
 
 # Title screen image
 title_bg = None
@@ -63,6 +70,12 @@ title_bg_path = os.path.join(current_dir, "..", "assets", "images", "title_scree
 if os.path.exists(title_bg_path):
     title_bg = pygame.image.load(title_bg_path).convert()
     title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Build menu image
+menu_panel = None
+menu_panel_path = os.path.join(current_dir, "..", "assets", "images", "build_menu_panel.png")
+if os.path.exists(menu_panel_path):
+    menu_panel = pygame.image.load(menu_panel_path).convert_alpha()
 
 # Bomb image
 bomb_img_path = os.path.join(current_dir, "..", "assets", "images", "bomb.png")
@@ -83,8 +96,51 @@ else:
 
 # Building images
 building_images = {}
+menu_icons = {}
 types = ["house", "apt", "hospital", "air", "power", "school"]
 materials = ["brick", "concrete", "gold"]
+
+# Building data
+BUILDING_DATA = {
+    "house": {
+        "label": "House",
+        "cost": 10,
+        "income": 1,
+        "health": 0
+    },
+    "apt": {
+        "label": "Apartment",
+        "cost": 18,
+        "income": 2,
+        "health": 0
+    },
+    "hospital": {
+        "label": "Hospital",
+        "cost": 30,
+        "income": 0,
+        "health": 4
+    },
+    "school": {
+        "label": "School",
+        "cost": 24,
+        "income": 0,
+        "health": 2
+    },
+    "power": {
+        "label": "Power Plant",
+        "cost": 28,
+        "income": 5,
+        "health": 0
+    },
+    "air": {
+        "label": "Airport",
+        "cost": 40,
+        "income": 8,
+        "health": 0
+    }
+}
+
+MENU_ORDER = ["house", "apt", "hospital", "school", "power", "air"]
 
 for b_type in types:
     building_images[b_type] = []
@@ -92,6 +148,9 @@ for b_type in types:
         path = os.path.join(current_dir, "..", f"assets/buildings/{b_type}_{mat}.png")
         img = pygame.image.load(path).convert_alpha()
         building_images[b_type].append(img)
+    
+    # brick version used as menu icon
+    menu_icons[b_type] = building_images[b_type][0]
 
 # Load leaderboard
 LEADERBOARD_FILE = "leaderboard.json"
@@ -125,14 +184,18 @@ bomb_anim_start = 0
 BOMB_ANIM_DURATION = 600  # milliseconds
 
 tip_messages = [
-    "Tip: Build early to start earning income.",
+    "Tip: Build power plants or airports to earn more income.",
+    "Tip: Hospitals and schools increase your score more when upgraded.",
     "Tip: Upgrading buildings increases your score.",
     "War never waits. Be prepared.",
     "Infrastructure is the backbone of survival.",
-    "Tip: More buildings = faster bomb attacks.",
+    "No one is safe, but some are safer than others.",
+    "There are no winners in war, only survivors.",
+    "City management is a delicate balance of growth and defense.",
     "Balance growth and survival carefully.",
     "Every decision has a cost.",
-    "Tip: Don’t let your money hit zero!",
+    "Tip: Don't let your money hit zero!",
+    "Tip: Don't let your health hit zero!",
     "Cities grow, but so do threats.",
     "Rebuild faster than destruction strikes."
 ]
@@ -145,10 +208,26 @@ start_time = 0
 
 play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
 
+# Build menu state
+MENU_WIDTH = 240
+MENU_X_CLOSED = SCREEN_WIDTH
+MENU_X_OPEN = SCREEN_WIDTH - MENU_WIDTH
+menu_x = MENU_X_CLOSED
+menu_open = False
+menu_speed = 24
+selected_building = "house"
+
+slot_rects = []
+
+# Bonus timing
+BONUS_INTERVAL = 5000
+last_bonus_tick = 0
+
 # Reset game
 def reset_game():
     global money_system, bombing, player_health, game_over
     global message, message_timer, buildings
+    global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time
 
     money_system = MoneySystem(start_amount=50, increment=10, interval=3000)
@@ -170,7 +249,7 @@ def calculate_score():
     total_buildings = len(unique_buildings)
     upgraded = sum(1 for b in unique_buildings if buildings[list(buildings.keys())[0]]["level"] > 0)  # ❌ old wrong way
 
-    # Better: get unique building dicts
+    # get unique building dicts
     seen = set()
     upgraded = 0
     for b in buildings.values():
@@ -241,6 +320,11 @@ def draw_leaderboard():
     hint = small_font.render("Press R to return", True, WHITE)
     screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 50))
 
+    menu_open = False
+    menu_x = MENU_X_CLOSED
+    selected_building = "house"
+    last_bonus_tick = pygame.time.get_ticks()
+
 # Tile utility functions
 def can_place_building(tile_x, tile_y, width, height):
     for dx in range(width):
@@ -266,6 +350,40 @@ def place_building(tile_x, tile_y, b_type, width=2, height=2):
     }
     for t in tiles:
         buildings[t] = building_data
+
+def get_unique_buildings():
+    unique = []
+    seen = set()
+    for b in buildings.values():
+        if id(b) not in seen:
+            seen.add(id(b))
+            unique.append(b)
+    return unique
+
+def apply_building_bonuses():
+    global player_health, last_bonus_tick
+
+    current_time = pygame.time.get_ticks()
+    if current_time - last_bonus_tick < BONUS_INTERVAL:
+        return
+
+    last_bonus_tick = current_time
+
+    total_income = 0
+    total_health = 0
+
+    for b in get_unique_buildings():
+        b_type = b["type"]
+        level_multiplier = b["level"] + 1
+        data = BUILDING_DATA[b_type]
+        total_income += data["income"] * level_multiplier
+        total_health += data["health"] * level_multiplier
+
+    if total_income > 0:
+        money_system.change_money(total_income, (20, 20))
+
+    if total_health > 0:
+        player_health = min(100, player_health + total_health)
 
 # Scale helper
 def scale_surface(surface, scale):
@@ -335,10 +453,14 @@ def draw_ui_offset(dx=0, dy=0):
     pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, current_width, bar_height))
     pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
 
+    selected_label = BUILDING_DATA[selected_building]["label"] if selected_building else "None"
+    help_text = small_font.render(f"B: Build Menu   Selected: {selected_label}", True, WHITE)
+    screen.blit(help_text, (20, 90))
+
     if message:
         elapsed = pygame.time.get_ticks() - message_timer
-        if elapsed < 2000:
-            alpha = 255 - int(elapsed / 2000 * 255)
+        if elapsed < 2200:
+            alpha = 255 - int(elapsed / 2200 * 255)
             text_surface = font.render(message, True, WHITE)
             text_surface.set_alpha(alpha)
             screen.blit(text_surface, (20 + dx, SCREEN_HEIGHT - 40 + dy))
@@ -373,6 +495,114 @@ def draw_title_screen():
     play_text = button_font.render("PLAY", True, WHITE)
     play_rect = play_text.get_rect(center=play_button.center)
     screen.blit(play_text, play_rect)
+
+# Menu slide animation
+def update_menu_animation():
+    global menu_x
+
+    if menu_open:
+        if menu_x > MENU_X_OPEN:
+            menu_x -= menu_speed
+            if menu_x < MENU_X_OPEN:
+                menu_x = MENU_X_OPEN
+    else:
+        if menu_x < MENU_X_CLOSED:
+            menu_x += menu_speed
+            if menu_x > MENU_X_CLOSED:
+                menu_x = MENU_X_CLOSED
+
+# Draw build menu
+def draw_build_menu():
+    global slot_rects
+
+    if menu_x >= SCREEN_WIDTH:
+        slot_rects = []
+        return
+
+    slot_rects = []
+
+    panel_rect = pygame.Rect(menu_x, 0, MENU_WIDTH, SCREEN_HEIGHT)
+
+    # draw panel image if available, else fallback panel
+    if menu_panel:
+        panel_scaled = pygame.transform.scale(menu_panel, (MENU_WIDTH, SCREEN_HEIGHT))
+        screen.blit(panel_scaled, (menu_x, 0))
+    else:
+        pygame.draw.rect(screen, LIGHT_WOOD, panel_rect)
+        pygame.draw.rect(screen, DARK_WOOD, panel_rect, 6)
+        title_text = menu_title_font.render("Build Menu", True, WHITE)
+        screen.blit(title_text, (menu_x + 48, 18))
+
+    # slot layout
+    slot_w = 188
+    slot_h = 68
+    slot_gap = 10
+    start_y = 88
+
+    mouse_pos = pygame.mouse.get_pos()
+    hovered_type = None
+
+    for i, b_type in enumerate(MENU_ORDER):
+        slot_x = menu_x + 26
+        slot_y = start_y + i * (slot_h + slot_gap)
+        rect = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
+        slot_rects.append((rect, b_type))
+
+        is_selected = (selected_building == b_type)
+        is_hovered = rect.collidepoint(mouse_pos)
+
+        if is_hovered:
+            hovered_type = b_type
+
+        # subtle backing
+        pygame.draw.rect(screen, PANEL_BROWN, rect, border_radius=8)
+
+        border_color = HIGHLIGHT if is_selected else WHITE
+        border_width = 4 if is_selected else 2
+        pygame.draw.rect(screen, border_color, rect, border_width, border_radius=8)
+
+        # icon
+        icon = menu_icons[b_type]
+        icon_scaled = pygame.transform.scale(icon, (48, 48))
+        screen.blit(icon_scaled, (rect.x + 8, rect.y + 10))
+
+        # labels
+        label = BUILDING_DATA[b_type]["label"]
+        cost = BUILDING_DATA[b_type]["cost"]
+
+        text1 = tiny_font.render(label, True, WHITE)
+        text2 = tiny_font.render(f"${cost}", True, GOLD)
+
+        screen.blit(text1, (rect.x + 64, rect.y + 12))
+        screen.blit(text2, (rect.x + 64, rect.y + 36))
+
+    # hover info box
+    info_type = hovered_type if hovered_type else selected_building
+    if info_type:
+        draw_menu_info_box(info_type)
+
+def draw_menu_info_box(b_type):
+    data = BUILDING_DATA[b_type]
+
+    box_w = 190
+    box_h = 112
+    box_x = max(10, menu_x - box_w - 10)
+    box_y = SCREEN_HEIGHT - box_h - 18
+
+    info_rect = pygame.Rect(box_x, box_y, box_w, box_h)
+    pygame.draw.rect(screen, (35, 25, 18), info_rect, border_radius=10)
+    pygame.draw.rect(screen, HIGHLIGHT, info_rect, 2, border_radius=10)
+
+    lines = [
+        data["label"],
+        f"Cost: ${data['cost']}",
+        f"Income: +{data['income']} / bonus tick",
+        f"Health: +{data['health']} / bonus tick"
+    ]
+
+    for i, line in enumerate(lines):
+        txt = tiny_font.render(line, True, WHITE)
+        screen.blit(txt, (box_x + 12, box_y + 12 + i * 22))
 
 def draw_bomb_animation():
     global bomb_anim_active
@@ -440,12 +670,34 @@ while running:
                         player_name += event.unicode
 
         elif game_state == "game":
-            if event.type == pygame.KEYDOWN and game_over:
-                if event.key == pygame.K_r:
+            if event.type == pygame.KEYDOWN:
+                if game_over and event.key == pygame.K_r:
                     game_state = "title"
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif not game_over and event.key == pygame.K_b:
+                    menu_open = not menu_open
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not game_over:
+                    click_handled = False
+
+                    # menu clicks first
+                    if menu_x < SCREEN_WIDTH:
+                        for rect, b_type in slot_rects:
+                            if rect.collidepoint(event.pos):
+                                selected_building = b_type
+                                message = f"{BUILDING_DATA[b_type]['label']} selected"
+                                message_timer = pygame.time.get_ticks()
+                                click_handled = True
+                                break
+
+                    if click_handled:
+                        continue
+
+                    # prevent map placement if clicking on visible menu area
+                    if event.pos[0] >= menu_x and menu_x < SCREEN_WIDTH:
+                        continue
+
                     mouse_x, mouse_y = pygame.mouse.get_pos()
 
                     tile_x = int(mouse_x / scaled_tile_width)
@@ -482,6 +734,7 @@ while running:
         draw_name_input()
 
     elif game_state == "game":
+        update_menu_animation()
         current_time = pygame.time.get_ticks()
         # Show random tip occasionally
         if current_time - last_tip_time > TIP_INTERVAL:
@@ -517,6 +770,7 @@ while running:
         # Only increment money if at least one building exists
         if len(buildings) > 0:
             money_system.update()
+            apply_building_bonuses()
 
         prev_health = player_health
         player_health, shake_offset = bombing.update(player_health)
@@ -532,6 +786,7 @@ while running:
         draw_buildings_offset(shake_x, shake_y)
         draw_ui_offset(shake_x, shake_y)
         draw_bomb_animation()
+        draw_build_menu()
     
     elif game_state == "leaderboard":
         draw_leaderboard()
