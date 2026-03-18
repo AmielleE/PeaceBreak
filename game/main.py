@@ -64,6 +64,13 @@ if os.path.exists(title_bg_path):
     title_bg = pygame.image.load(title_bg_path).convert()
     title_bg = pygame.transform.scale(title_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# Bomb image
+bomb_img_path = os.path.join(current_dir, "..", "assets", "images", "bomb.png")
+if os.path.exists(bomb_img_path):
+    bomb_img = pygame.image.load(bomb_img_path).convert_alpha()
+else:
+    bomb_img = None
+
 # Bomb sound path
 sound_path = os.path.join(current_dir, "..", "assets", "sounds", "BOOM.wav")
 
@@ -111,6 +118,11 @@ buildings = {}
 game_state = "title"
 player_name = ""
 game_over_reason = ""
+
+# Bomb animation
+bomb_anim_active = False
+bomb_anim_start = 0
+BOMB_ANIM_DURATION = 600  # milliseconds
 
 GAME_DURATION = 180000  # 3 minutes in ms
 start_time = 0
@@ -346,6 +358,35 @@ def draw_title_screen():
     play_rect = play_text.get_rect(center=play_button.center)
     screen.blit(play_text, play_rect)
 
+def draw_bomb_animation():
+    global bomb_anim_active
+
+    if not bomb_anim_active or not bomb_img:
+        return
+
+    elapsed = pygame.time.get_ticks() - bomb_anim_start
+    progress = elapsed / BOMB_ANIM_DURATION
+
+    if progress >= 1:
+        bomb_anim_active = False
+        return
+
+    # --- Falling + scaling effect ---
+    start_y = -200
+    end_y = SCREEN_HEIGHT // 2
+
+    # Smooth fall
+    y = start_y + (end_y - start_y) * progress
+
+    # Scale up over time
+    scale = 0.3 + (2.5 * progress)
+
+    img = pygame.transform.rotozoom(bomb_img, 0, scale)
+
+    rect = img.get_rect(center=(SCREEN_WIDTH // 2, int(y)))
+
+    screen.blit(img, rect)
+
 # Initial reset
 reset_game()
 
@@ -454,13 +495,20 @@ while running:
         if len(buildings) > 0:
             money_system.update()
 
+        prev_health = player_health
         player_health, shake_offset = bombing.update(player_health)
+
+        # If damage happened → trigger bomb animation
+        if player_health < prev_health:
+            bomb_anim_active = True
+            bomb_anim_start = pygame.time.get_ticks()
 
         screen.fill(BLACK)
         shake_x, shake_y = shake_offset
         draw_map_offset(shake_x, shake_y)
         draw_buildings_offset(shake_x, shake_y)
         draw_ui_offset(shake_x, shake_y)
+        draw_bomb_animation()
     
     elif game_state == "leaderboard":
         draw_leaderboard()
