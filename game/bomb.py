@@ -3,14 +3,9 @@ import random
 
 class BombingEvent:
     def __init__(self, interval=30000, damage=20, shake_duration=500):
-        """
-        interval: milliseconds between bombings
-        damage: health lost
-        shake_duration: screen shake duration in ms
-        """
-        self.interval = interval
-        self.damage = damage
-        self.shake_duration = shake_duration
+        self.interval = interval # milliseconds between bombings
+        self.damage = damage # health lost per bombing
+        self.shake_duration = shake_duration # duration of screen shake in ms
         self.last_bomb = pygame.time.get_ticks()
         self.shaking = False
         self.shake_start_time = 0
@@ -20,7 +15,7 @@ class BombingEvent:
         self.sound = pygame.mixer.Sound(path)
 
     def update(self, player_health):
-        """Returns updated health and shake offset"""
+        # Returns updated health and shake offset
         current_time = pygame.time.get_ticks()
         shake_offset = (0,0)
 
