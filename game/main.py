@@ -124,6 +124,22 @@ bomb_anim_active = False
 bomb_anim_start = 0
 BOMB_ANIM_DURATION = 600  # milliseconds
 
+tip_messages = [
+    "Tip: Build early to start earning income.",
+    "Tip: Upgrading buildings increases your score.",
+    "War never waits. Be prepared.",
+    "Infrastructure is the backbone of survival.",
+    "Tip: More buildings = faster bomb attacks.",
+    "Balance growth and survival carefully.",
+    "Every decision has a cost.",
+    "Tip: Don’t let your money hit zero!",
+    "Cities grow, but so do threats.",
+    "Rebuild faster than destruction strikes."
+]
+
+last_tip_time = 0
+TIP_INTERVAL = 8000  # every 8 seconds
+
 GAME_DURATION = 180000  # 3 minutes in ms
 start_time = 0
 
@@ -467,6 +483,13 @@ while running:
 
     elif game_state == "game":
         current_time = pygame.time.get_ticks()
+        # Show random tip occasionally
+        if current_time - last_tip_time > TIP_INTERVAL:
+            if len(buildings) > 0: # only after player starts
+                message = random.choice(tip_messages)
+                message_timer = current_time
+                last_tip_time = current_time
+
         # time end
         if current_time - start_time >= GAME_DURATION:
             score, total, upgraded = calculate_score()
