@@ -2,6 +2,7 @@ import pygame
 import pytmx
 import os
 import json
+import random
 from money import MoneySystem
 from bomb import BombingEvent
 
