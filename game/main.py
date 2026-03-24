@@ -6,9 +6,9 @@ import random
 
 from settings import *
 from assets import load_images, load_sounds, load_buildings
-from ui import draw_title_screen, draw_name_input, draw_ui_offset, draw_build_menu, draw_menu_info_box
 from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface
-from leaderboard import load_leaderboard, add_score, draw_leaderboard
+from leaderboard import load_leaderboard, add_score, calculate_score
+from ui import draw_title_screen, draw_name_input, draw_leaderboard, draw_ui_offset, draw_build_menu, update_menu_animation, draw_bomb_animation
 from effects import draw_bomb_animation, apply_screen_shake
 from buildings import (
     BUILDING_DATA, MENU_ORDER, TYPES,
@@ -242,8 +242,8 @@ while running:
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
-            score, total, upgraded = count_buildings(buildings), count_buildings(buildings), count_upgraded(buildings)
-            add_score(player_name, score, leaderboard)
+            score, total, upgraded = calculate_score(money_system, player_health, buildings)
+            add_score(leaderboard, player_name, score)
             game_state = "leaderboard"
 
         # Bombing interval
