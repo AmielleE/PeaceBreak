@@ -71,7 +71,7 @@ def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h, t
 
     return True
 
-def place_building(buildings, tile_x, tile_y, b_type, width=2, height=2):
+def place_building(buildings, tile_x, tile_y, b_type, width=3, height=3):
     tiles = [(tile_x + dx, tile_y + dy) for dx in range(width) for dy in range(height)]
 
     building_data = {

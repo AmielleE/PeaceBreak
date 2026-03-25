@@ -219,7 +219,7 @@ while running:
                         msg_box.show(result, box_type="tip", position="corner")
                     else:
                         b_type = selected_building
-                        width, height = 2, 2
+                        width, height = 3, 3
                         if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
                             msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
