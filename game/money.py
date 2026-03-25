@@ -1,21 +1,19 @@
 import pygame
 
 class MoneySystem:
-    def __init__(self, start_amount=0, increment=10, interval=3000):
+    def __init__(self, start_amount=50, increment=0, interval=3000, cap=9999):
         self.money = start_amount
         self.increment = increment
         self.interval = interval
+        self.cap = cap 
         self.last_update = pygame.time.get_ticks()
         self.animations = []  # floating money animations
 
     def update(self):
         current_time = pygame.time.get_ticks()
-        # Automatic income
+        # Passive income over time
         if current_time - self.last_update >= self.interval:
-            self.money += self.increment
             self.last_update = current_time
-            # floating coin animation at fixed position
-            self.animations.append({'amount': self.increment, 'pos':[20, 20], 'alpha':255})
 
         # Update floating animations
         for anim in self.animations[:]:
@@ -25,8 +23,9 @@ class MoneySystem:
                 self.animations.remove(anim)
 
     def change_money(self, amount, pos):
-        """Animate money change at given position."""
-        self.money += amount
+        if amount > 0:
+            amount = min(amount, self.cap - self.money) # cap positive changes too
+        self.money = max(0, self.money + amount)
         self.animations.append({'amount': amount, 'pos': list(pos), 'alpha': 255})
 
     def draw(self, surface, font, position=(20, 20)):

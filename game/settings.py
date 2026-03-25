@@ -14,8 +14,8 @@ PANEL_BROWN = (70, 40, 20)
 HIGHLIGHT = (255, 230, 120)
 
 # Screen scaling
-SCREEN_SCALE = 0.27
-SCALE = 0.27 # can be removed if same as SCREEN_SCALE
+SCREEN_SCALE = 0.22
+SCALE = 0.22
 
 # Menu
 MENU_WIDTH = 240

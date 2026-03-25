@@ -40,6 +40,11 @@ BUILDING_DATA = {
 MENU_ORDER = ["house", "apt", "hospital", "school", "power", "air"]
 TYPES = ["house", "apt", "hospital", "air", "power", "school"]
 
+UPGRADE_COSTS = {
+    0: 15, # brick to concrete
+    1: 50, # concrete to gold
+}
+
 # building placement
 def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h):
     for dx in range(width):
@@ -102,8 +107,10 @@ def apply_building_bonuses(buildings, money_system, player_health, last_bonus_ti
     if current_time - last_bonus_tick < bonus_interval:
         return player_health, last_bonus_tick
 
-    last_bonus_tick = current_time
+    if not buildings:
+        return player_health, last_bonus_tick  # no buildings = no income
 
+    last_bonus_tick = current_time
     total_income = 0
     total_health = 0
 
@@ -111,13 +118,11 @@ def apply_building_bonuses(buildings, money_system, player_health, last_bonus_ti
         b_type = b["type"]
         level_multiplier = b["level"] + 1
         data = BUILDING_DATA[b_type]
-
         total_income += data["income"] * level_multiplier
         total_health += data["health"] * level_multiplier
 
     if total_income > 0:
         money_system.change_money(total_income, (20, 20))
-
     if total_health > 0:
         player_health = min(100, player_health + total_health)
 
@@ -125,9 +130,15 @@ def apply_building_bonuses(buildings, money_system, player_health, last_bonus_ti
 
 # upgrade logic
 def try_upgrade_building(building, money_system, mouse_pos):
-    if building["level"] < 2:
-        building["level"] += 1
-        money_system.change_money(-15, mouse_pos)
-        return f"{building['type'].capitalize()} upgraded!"
+    level = building["level"]
+    if level < 2:
+        cost = UPGRADE_COSTS[level]
+        if money_system.money >= cost:
+            building["level"] += 1
+            money_system.change_money(-cost, mouse_pos)
+            level_names = ["Concrete", "Gold"]
+            return f"{building['type'].capitalize()} upgraded to {level_names[level]}!"
+        else:
+            return f"Need ${cost} to upgrade!"
     else:
-        return f"{building['type'].capitalize()} fully upgraded!"
+        return f"{building['type'].capitalize()} is fully upgraded."

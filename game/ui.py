@@ -80,7 +80,7 @@ def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, leaderb
     screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 50))
 
 # game UI
-def draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, message, message_timer, SCREEN_HEIGHT): 
+def draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT):
     money_system.draw(screen, font)
 
     # Health bar
@@ -96,15 +96,6 @@ def draw_ui_offset(screen, money_system, font, small_font, player_health, select
 
     help_text = small_font.render(f"B: Build Menu   Selected: {selected_label}", True, WHITE)
     screen.blit(help_text, (20, 90))
-
-    # Message fade
-    if message:
-        elapsed = pygame.time.get_ticks() - message_timer
-        if elapsed < 2200:
-            alpha = 255 - int(elapsed / 2200 * 255)
-            text_surface = font.render(message, True, WHITE)
-            text_surface.set_alpha(alpha)
-            screen.blit(text_surface, (20, SCREEN_HEIGHT - 40))
 
 # build menu
 def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT):
