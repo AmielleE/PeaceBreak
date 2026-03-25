@@ -10,7 +10,7 @@ class MessageBox:
         self.box_type = "tip"  # "tip", "war", "score", "event"
         self.position = "bottom"  # "bottom" or "corner"
 
-    def show(self, message, submessage="", duration=3500, box_type="tip", position="bottom"):
+    def show(self, message, submessage="", duration=6000, box_type="tip", position="bottom"):
         self.message = message
         self.submessage = submessage
         self.timer = pygame.time.get_ticks()

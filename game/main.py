@@ -131,6 +131,22 @@ SDG_TIPS = [
     ("Tip: Upgrading buildings increases resilience.", "SDG 9 calls for innovation in infrastructure.", "tip"),
     ("Tip: Airports connect your city to the world.", "SDG 9: Foster innovation through connectivity.", "tip"),
     ("Tip: Balance growth with sustainability.", "More buildings = more bombing frequency.", "tip"),
+    ("SDG 9: Over 1 billion people lack reliable electricity.", "Power plants are not a luxury — they are essential.", "tip"),
+    ("SDG 11: 1 in 4 people live in informal settlements.", "Safe housing is a human right, not a privilege.", "tip"),
+    ("SDG 16: Corruption costs $2.6 trillion annually.", "Strong institutions protect your city from within.", "tip"),
+    ("Tip: Schools build long-term city resilience.", "Educated populations recover from conflict faster.", "tip"),
+    ("SDG 9: Infrastructure investment drives GDP growth.", "Every dollar spent on infrastructure returns four.", "tip"),
+    ("SDG 11: Green cities reduce disaster risk.", "Sustainable planning saves lives before crisis hits.", "tip"),
+    ("Tip: Diversify your buildings.", "Cities that rely on one industry are fragile.", "tip"),
+    ("SDG 16: 2 billion people live in conflict-affected areas.", "Peace is not guaranteed — it must be built.", "tip"),
+    ("SDG 9: Innovation closes the development gap.", "Technology and infrastructure lift communities out of poverty.", "tip"),
+    ("Tip: Upgrade hospitals early.", "Health infrastructure is your city's lifeline in war.", "tip"),
+    ("SDG 11: Disaster-resilient cities save more lives.", "Build smart — not just fast.", "tip"),
+    ("SDG 16: Access to justice protects the vulnerable.", "Without law, the powerful take from the powerless.", "tip"),
+    ("Tip: Apartments house more people per tile.", "Dense housing is key to sustainable urban growth.", "tip"),
+    ("SDG 9: 2.7 billion people lack internet access.", "Connectivity is modern infrastructure — build toward it.", "tip"),
+    ("SDG 11: Public services define a city's character.", "Schools and hospitals matter more than monuments.", "tip"),
+    ("Tip: A bombed city can be rebuilt.", "Resilience means starting over without giving up.", "tip"),
 ]
 
 get_buildable_gids(tmx_data)
@@ -270,7 +286,7 @@ while running:
             else:
                 pool = SDG_TIPS
             msg, sub, mtype = random.choice(pool)
-            msg_box.show(msg, sub, duration=5000, box_type=mtype, position="bottom")
+            msg_box.show(msg, sub, duration=7000, box_type=mtype, position="bottom")
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
