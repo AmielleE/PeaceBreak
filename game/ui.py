@@ -214,43 +214,50 @@ def draw_ui_offset(screen, money_system, font, small_font, player_health, select
     money_system.draw(screen, val_font)
 
 # build menu
-def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT):
+def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
+                    menu_icons, BUILDING_DATA, selected_building,
+                    tiny_font, menu_title_font, SCREEN_HEIGHT):
 
     if menu_x >= SCREEN_WIDTH:
         return [], None
 
     slot_rects = []
-    MENU_WIDTH = 300
+    
+    # Everything is anchored to the right edge of the screen
+    panel_w = 260
+    panel_x = SCREEN_WIDTH - panel_w  # always flush to right edge
 
-    # Panel image scaled much wider
+    # Draw panel image scaled exactly to panel_w
     if menu_panel:
-        panel_scaled = pygame.transform.scale(menu_panel, (MENU_WIDTH + 180, SCREEN_HEIGHT))
-        screen.blit(panel_scaled, (menu_x - 90, 0))
+        panel_scaled = pygame.transform.scale(menu_panel, (panel_w, SCREEN_HEIGHT))
+        screen.blit(panel_scaled, (panel_x, 0))
     else:
-        panel_surf = pygame.Surface((MENU_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        pygame.draw.rect(panel_surf, (12, 14, 30, 230), (0, 0, MENU_WIDTH, SCREEN_HEIGHT))
-        screen.blit(panel_surf, (menu_x, 0))
+        panel_surf = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.rect(panel_surf, (12, 14, 30, 230), (0, 0, panel_w, SCREEN_HEIGHT))
+        screen.blit(panel_surf, (panel_x, 0))
 
-    slot_w, slot_h = 255, 95
+    # Slots sized to fit strictly within the panel
+    slot_w  = 220
+    slot_h  = 95
     slot_gap = 6
-    start_y = 90 
+    start_y  = 90
+    slot_x   = panel_x + (panel_w - slot_w) // 2  # centered inside panel
 
-    mouse_pos = pygame.mouse.get_pos()
+    mouse_pos    = pygame.mouse.get_pos()
     hovered_type = None
 
     label_font = pygame.font.SysFont(None, 22)
     stat_font  = pygame.font.SysFont(None, 19)
-    GOLD = (255, 215, 0)
-    GREEN = (100, 220, 120)
-    BLUE = (100, 190, 255)
-    WHITE = (255, 255, 255)
-    RED_COL = (220, 100, 100)
+    GOLD      = (255, 215, 0)
+    GREEN     = (100, 220, 120)
+    BLUE      = (100, 190, 255)
+    WHITE     = (255, 255, 255)
+    RED_COL   = (220, 100, 100)
     HIGHLIGHT = (255, 230, 120)
 
     for i, b_type in enumerate(MENU_ORDER):
-        slot_x = menu_x + 22
         slot_y = start_y + i * (slot_h + slot_gap)
-        rect = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
+        rect   = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
         slot_rects.append((rect, b_type))
 
         is_selected = selected_building == b_type
@@ -260,7 +267,7 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_i
 
         # Slot background
         slot_surf = pygame.Surface((slot_w, slot_h), pygame.SRCALPHA)
-        bg_color = (60, 45, 20, 210) if is_selected else (30, 20, 10, 180)
+        bg_color  = (60, 45, 20, 210) if is_selected else (30, 20, 10, 180)
         pygame.draw.rect(slot_surf, bg_color, (0, 0, slot_w, slot_h), border_radius=10)
         border_color = (*HIGHLIGHT, 255) if is_selected else (120, 80, 30, 200)
         border_w = 3 if is_selected else 1
@@ -269,31 +276,31 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_i
 
         # Icon
         icon = menu_icons[b_type]
-        icon_scaled = pygame.transform.scale(icon, (48, 48))
-        screen.blit(icon_scaled, (slot_x + 6, slot_y + 16))
+        icon_scaled = pygame.transform.scale(icon, (44, 44))
+        screen.blit(icon_scaled, (slot_x + 6, slot_y + 24))
 
         data = BUILDING_DATA[b_type]
 
-        # Building name
+        # Name
         name_surf = label_font.render(data["label"], True, WHITE)
-        screen.blit(name_surf, (slot_x + 62, slot_y + 8))
+        screen.blit(name_surf, (slot_x + 58, slot_y + 8))
 
         # Cost
         cost_surf = stat_font.render(f"Cost: ${data['cost']}", True, RED_COL)
-        screen.blit(cost_surf, (slot_x + 62, slot_y + 30))
+        screen.blit(cost_surf, (slot_x + 58, slot_y + 30))
 
-        # Income, only show if > 0
-        stat_y = slot_y + 48
+        # Income and health on separate lines
+        stat_y = slot_y + 50
         if data["income"] > 0:
             inc_surf = stat_font.render(f"+${data['income']}/tick", True, GREEN)
-            screen.blit(inc_surf, (slot_x + 62, stat_y))
-            stat_y += 18  # push health down if income also exists
+            screen.blit(inc_surf, (slot_x + 58, stat_y))
+            stat_y += 18
 
         if data["health"] > 0:
             hp_surf = stat_font.render(f"+{data['health']} lifeline/tick", True, BLUE)
-            screen.blit(hp_surf, (slot_x + 62, stat_y))
+            screen.blit(hp_surf, (slot_x + 58, stat_y))
 
-    return slot_rects, hovered_type  # no info box call at the end
+    return slot_rects, hovered_type
 
 # menu info box
 def draw_menu_info_box(screen, b_type, BUILDING_DATA, menu_x, SCREEN_HEIGHT):

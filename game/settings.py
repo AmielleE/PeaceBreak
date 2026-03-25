@@ -18,7 +18,7 @@ SCREEN_SCALE = 0.22
 SCALE = 0.22
 
 # Menu
-MENU_WIDTH = 240
+MENU_WIDTH = 260
 
 # Game timers
 TIP_INTERVAL = 14000 # ms between tip messages
