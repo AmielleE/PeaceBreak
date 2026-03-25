@@ -2,13 +2,11 @@ import pygame
 import pytmx
 from settings import SCALE
 
-# Scale helper
 def scale_surface(surface, scale):
     w = max(1, int(surface.get_width() * scale))
     h = max(1, int(surface.get_height() * scale))
     return pygame.transform.scale(surface, (w, h))
 
-# Draw map layers
 def draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, dx=0, dy=0):
     for layer in tmx_data.visible_layers:
         if isinstance(layer, pytmx.TiledTileLayer):
@@ -20,17 +18,17 @@ def draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, dx=
                 if not tile:
                     continue
 
-                # Scale using global SCALE
                 scaled_tile = scale_surface(tile, SCALE)
+                img_h = scaled_tile.get_height()
 
                 draw_x = x * scaled_tile_width + dx
-                draw_y = y * scaled_tile_height + dy
+                draw_y = (y + 1) * scaled_tile_height - img_h + dy
 
                 screen.blit(scaled_tile, (draw_x, draw_y))
 
-# Draw buildings
 def draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, dx=0, dy=0):
     drawn = set()
+
     for b in buildings.values():
         if id(b) in drawn:
             continue
