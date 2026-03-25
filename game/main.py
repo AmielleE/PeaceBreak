@@ -192,7 +192,7 @@ while running:
                         building = buildings[clicked_tile]
                         message = try_upgrade_building(building, money_system, event.pos)
                     else:
-                        b_type = random.choice(types)
+                        b_type = selected_building
                         width, height = 2, 2
                         if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height):
                             place_building(buildings, tile_x, tile_y, b_type, width, height)
@@ -243,7 +243,7 @@ while running:
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
             score, total, upgraded = count_buildings(buildings), count_buildings(buildings), count_upgraded(buildings)
-            add_score(player_name, score, leaderboard)
+            add_score(leaderboard, player_name, score)
             game_state = "leaderboard"
 
         # Bombing interval

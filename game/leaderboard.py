@@ -11,14 +11,6 @@ def load_leaderboard(filename="leaderboard.json"):
     with open(filename, "r") as f:
         return json.load(f)
 
-def add_score(name, score, filename="leaderboard.json"):
-    leaderboard = load_leaderboard(filename)
-    leaderboard.append({"name": name, "score": score})
-    leaderboard.sort(key=lambda x: x["score"], reverse=True)
-    with open(filename, "w") as f:
-        json.dump(leaderboard, f, indent=4)
-    return leaderboard
-
 def draw_leaderboard(screen, leaderboard, x=50, y=50, font_size=30):
     import pygame
     font = pygame.font.SysFont(None, font_size)
