@@ -195,7 +195,7 @@ while running:
                     for rect, b_type in slot_rects:
                         if rect.collidepoint(event.pos):
                             selected_building = b_type
-                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} selected", "Click a tile to place it.", box_type="tip")
+                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} selected", "Click a tile to place it.", box_type="tip", position="corner")
                             click_handled = True
                             break
                 if click_handled:
@@ -213,18 +213,18 @@ while running:
                     if clicked_tile in buildings:
                         building = buildings[clicked_tile]
                         result = try_upgrade_building(building, money_system, event.pos)
-                        msg_box.show(result, box_type="tip")
+                        msg_box.show(result, box_type="tip", position="corner")
                     else:
                         b_type = selected_building
                         width, height = 2, 2
                         if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height):
                             place_building(buildings, tile_x, tile_y, b_type, width, height)
-                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} placed!", "Your city grows.", box_type="tip")
+                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} placed!", "Your city grows.", box_type="tip", position="corner")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
                         else:
-                            msg_box.show("Cannot place here!", "Tile is occupied or out of bounds.", box_type="event")
+                            msg_box.show("Cannot place here!", "Tile is occupied or out of bounds.", box_type="event", position="corner")
 
     # --- Game logic ---
     if game_state == "title":
@@ -250,7 +250,7 @@ while running:
             else:
                 pool = SDG_TIPS
             msg, sub, mtype = random.choice(pool)
-            msg_box.show(msg, sub, duration=4000, box_type=mtype)
+            msg_box.show(msg, sub, duration=5000, box_type=mtype, position="bottom")
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
@@ -269,7 +269,7 @@ while running:
 
         # Low money warning
         if money_system.money < 50 and not msg_box.active:
-            msg_box.show("Funds critically low!", "If your money hits $0 you lose the game.", duration=3000, box_type="war")
+            msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
 
         # Bombing update
         prev_health = player_health
@@ -277,7 +277,7 @@ while running:
         if player_health < prev_health:
             bomb_anim_active = True
             bomb_anim_start = current_time
-            msg_box.show("Your city was bombed!", "Rebuild and stay resilient - SDG 9.", box_type="war")
+            msg_box.show("Your city was bombed!", "Rebuild and stay resilient - SDG 9.", box_type="war", position="corner")
 
         # --- Drawing ---
         screen.fill(BLACK)

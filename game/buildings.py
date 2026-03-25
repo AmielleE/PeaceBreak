@@ -2,37 +2,37 @@ BUILDING_DATA = {
     "house": {
         "label": "House",
         "cost": 10,
-        "income": 1,
+        "income": 5,
         "health": 0
     },
     "apt": {
         "label": "Apartment",
         "cost": 18,
-        "income": 2,
+        "income": 10,
         "health": 0
     },
     "hospital": {
         "label": "Hospital",
         "cost": 30,
-        "income": 0,
-        "health": 4
+        "income": 5,
+        "health": 10
     },
     "school": {
         "label": "School",
         "cost": 24,
-        "income": 0,
-        "health": 2
+        "income": 3,
+        "health": 5
     },
     "power": {
         "label": "Power Plant",
         "cost": 28,
-        "income": 5,
+        "income": 32,
         "health": 0
     },
     "air": {
         "label": "Airport",
         "cost": 40,
-        "income": 8,
+        "income": 25,
         "health": 0
     }
 }

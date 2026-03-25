@@ -29,46 +29,20 @@ class MoneySystem:
         self.animations.append({'amount': amount, 'pos': list(pos), 'alpha': 255})
 
     def draw(self, surface, font, position=(20, 20)):
-        def draw_text_with_outline(text, pos, main_color, outline_color=(0, 0, 0)):
-            # Render base text
-            base = font.render(text, True, main_color)
-            outline = font.render(text, True, outline_color)
-
-            x, y = pos
-
-            # Draw outline (8 directions)
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    if dx != 0 or dy != 0:
-                        surface.blit(outline, (x + dx, y + dy))
-
-            # Draw main text on top
-            surface.blit(base, (x, y))
-
-        # Draw main money (white with black outline)
-        draw_text_with_outline(f"Money: ${self.money}", position, (255, 255, 255))
-
-        # Draw floating animations
+    # Only draw floating animations, HUD draws the static money value
         for anim in self.animations:
             text = f"+${anim['amount']}" if anim['amount'] > 0 else f"${anim['amount']}"
-
-            # Color logic
-            main_color = (255, 255, 255) if anim['amount'] > 0 else (255, 0, 0)
+            main_color = (100, 255, 140) if anim['amount'] > 0 else (255, 80, 80)
 
             base = font.render(text, True, main_color)
             outline = font.render(text, True, (0, 0, 0))
 
             x, y = anim['pos']
-
-            # Apply alpha to both
             base.set_alpha(anim['alpha'])
             outline.set_alpha(anim['alpha'])
 
-            # Draw outline
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
                     if dx != 0 or dy != 0:
                         surface.blit(outline, (x + dx, y + dy))
-
-            # Draw main text
             surface.blit(base, (x, y))

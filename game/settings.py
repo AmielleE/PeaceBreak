@@ -21,6 +21,6 @@ SCALE = 0.22
 MENU_WIDTH = 240
 
 # Game timers
-TIP_INTERVAL = 8000 # ms between tip messages
+TIP_INTERVAL = 14000 # ms between tip messages
 GAME_DURATION = 180000 # 3 minutes in ms
 BONUS_INTERVAL = 3000  # 3 seconds per bonus tick

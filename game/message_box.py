@@ -8,13 +8,15 @@ class MessageBox:
         self.duration = 3500
         self.active = False
         self.box_type = "tip"  # "tip", "war", "score", "event"
+        self.position = "bottom"  # "bottom" or "corner"
 
-    def show(self, message, submessage="", duration=3500, box_type="tip"):
+    def show(self, message, submessage="", duration=3500, box_type="tip", position="bottom"):
         self.message = message
         self.submessage = submessage
         self.timer = pygame.time.get_ticks()
         self.duration = duration
         self.active = True
+        self.position = position
         self.box_type = box_type
 
     def draw(self, screen, SCREEN_WIDTH, SCREEN_HEIGHT):
@@ -44,9 +46,14 @@ class MessageBox:
         }
         style = type_styles.get(self.box_type, type_styles["tip"])
 
-        box_w, box_h = 480, 110
-        box_x = SCREEN_WIDTH // 2 - box_w // 2
-        box_y = SCREEN_HEIGHT - box_h - 30
+        if self.position == "corner":
+            box_w, box_h = 230, 68
+            box_x = 15
+            box_y = 148 # sits just below the HUD panel
+        else:
+            box_w, box_h = 480, 110
+            box_x = SCREEN_WIDTH // 2 - box_w // 2
+            box_y = SCREEN_HEIGHT - box_h - 30
 
         # Draw box
         surf = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
@@ -57,9 +64,9 @@ class MessageBox:
         pygame.draw.rect(surf, border, (0, 0, box_w, box_h), 3, border_radius=12)
 
         # Icon/label bar
-        label_font = pygame.font.SysFont(None, 20)
-        msg_font   = pygame.font.SysFont(None, 26)
-        sub_font   = pygame.font.SysFont(None, 21)
+        label_font = pygame.font.SysFont(None, 18)   # was 20
+        msg_font = pygame.font.SysFont(None, 20 if self.position == "corner" else 26)
+        sub_font = pygame.font.SysFont(None, 17 if self.position == "corner" else 21)
 
         label_surf = label_font.render(style["icon"], True, style["border"])
         label_surf.set_alpha(alpha)
