@@ -7,7 +7,7 @@ import random
 from settings import *
 from assets import load_images, load_sounds, load_buildings
 from ui import draw_title_screen, draw_name_input, draw_ui_offset, draw_build_menu, draw_menu_info_box, draw_leaderboard
-from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface
+from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface, get_buildable_gids
 from leaderboard import load_leaderboard, add_score, calculate_score
 from effects import draw_bomb_animation, apply_screen_shake
 from buildings import (
@@ -117,6 +117,8 @@ SDG_TIPS = [
     ("Tip: Balance growth with sustainability.", "More buildings = more bombing frequency.", "tip"),
 ]
 
+get_buildable_gids(tmx_data)
+
 # --- Game functions ---
 def reset_game():
     global money_system, bombing, player_health, game_over
@@ -190,6 +192,7 @@ while running:
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
                 click_handled = False
+                
                 # Menu clicks
                 if menu_x < SCREEN_WIDTH:
                     for rect, b_type in slot_rects:
@@ -217,14 +220,14 @@ while running:
                     else:
                         b_type = selected_building
                         width, height = 2, 2
-                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height):
-                            place_building(buildings, tile_x, tile_y, b_type, width, height)
-                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} placed!", "Your city grows.", box_type="tip", position="corner")
+                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS):
+                            place_building(buildings, tile_x, tile_y, selected_building, width, height)
+                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
                         else:
-                            msg_box.show("Cannot place here!", "Tile is occupied or out of bounds.", box_type="event", position="corner")
+                            msg_box.show("Cannot place here!", "Build only on paved grey areas.", box_type="event", position="corner")
 
     # --- Game logic ---
     if game_state == "title":

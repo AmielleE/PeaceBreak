@@ -1,3 +1,5 @@
+from map_renderer import get_tile_gid
+
 BUILDING_DATA = {
     "house": {
         "label": "House",
@@ -46,16 +48,25 @@ UPGRADE_COSTS = {
 }
 
 # building placement
-def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h):
+def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h, tmx_data, buildable_gids):
     for dx in range(width):
         for dy in range(height):
-            check_tile = (tile_x + dx, tile_y + dy)
+            check_x = tile_x + dx
+            check_y = tile_y + dy
 
-            if check_tile[0] < 0 or check_tile[1] < 0:
+            # Bounds check
+            if check_x < 0 or check_y < 0:
                 return False
-            if check_tile[0] >= map_w or check_tile[1] >= map_h:
+            if check_x >= map_w or check_y >= map_h:
                 return False
-            if check_tile in buildings:
+
+            # Already occupied
+            if (check_x, check_y) in buildings:
+                return False
+
+            # Must be a buildable tile
+            gid = get_tile_gid(tmx_data, check_x, check_y)
+            if gid not in buildable_gids:
                 return False
 
     return True

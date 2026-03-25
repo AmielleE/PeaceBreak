@@ -44,3 +44,23 @@ def draw_buildings_offset(screen, buildings, building_images, scaled_tile_width,
         draw_y = top_left[1] * scaled_tile_height + dy
 
         screen.blit(img, (draw_x, draw_y))
+
+# for identifying tile GIDs and buildable areas
+def get_tile_gid(tmx_data, tile_x, tile_y):
+    gid = 0
+    for layer in tmx_data.visible_layers:
+        if isinstance(layer, pytmx.TiledTileLayer):
+            tile_gid = layer.data[tile_y][tile_x]
+            if tile_gid != 0:
+                gid = tile_gid  # keep overwriting so we get the top layer
+    return gid
+
+# prints all unique GIDs on the map so we can identify which ones are the grey tiles (to place buidlings)
+def get_buildable_gids(tmx_data):
+    gids = set()
+    for layer in tmx_data.visible_layers:
+        if isinstance(layer, pytmx.TiledTileLayer):
+            for x, y, gid in layer:
+                if gid != 0:
+                    gids.add(gid)
+    return gids

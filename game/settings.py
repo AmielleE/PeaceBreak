@@ -24,3 +24,5 @@ MENU_WIDTH = 260
 TIP_INTERVAL = 14000 # ms between tip messages
 GAME_DURATION = 180000 # 3 minutes in ms
 BONUS_INTERVAL = 3000  # 3 seconds per bonus tick
+
+BUILDABLE_GIDS = {9} # grey tile GID
