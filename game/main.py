@@ -7,7 +7,7 @@ import random
 from settings import *
 from assets import load_images, load_sounds, load_buildings
 from ui import draw_title_screen, draw_name_input, draw_ui_offset, draw_build_menu, draw_menu_info_box, draw_leaderboard
-from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface, get_buildable_gids
+from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface, get_buildable_gids, draw_craters, get_tile_gid
 from leaderboard import load_leaderboard, add_score, calculate_score
 from effects import draw_bomb_animation, apply_screen_shake
 from buildings import (
@@ -64,8 +64,24 @@ building_images, menu_icons, types = load_buildings(current_dir)
 title_bg = images.get("title_bg")
 menu_panel = images.get("menu_panel")
 bomb_img = images.get("bomb")
+crater_img = images.get("crater")
 clang_sound = sounds.get("clang")
 bomb_sound_path = sounds.get("bomb_path")
+
+def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
+    crater_set = set(craters)
+    tiles = []
+    for y in range(tmx_data.height):
+        for x in range(tmx_data.width):
+            if (x, y) in buildings:
+                continue
+            if (x, y) in crater_set:
+                continue
+            gid = get_tile_gid(tmx_data, x, y)
+            if gid in buildable_gids:
+                tiles.append((x, y))
+    return tiles
+
 
 # --- Leaderboard ---
 leaderboard = load_leaderboard()
@@ -140,6 +156,7 @@ def reset_game():
     menu_open = False
     selected_building = "house"
     last_bonus_tick = pygame.time.get_ticks()
+    bombing.craters.clear() if bombing else None
 
 def draw_map_wrapper():
     draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, 0, 0)
@@ -220,7 +237,7 @@ while running:
                     else:
                         b_type = selected_building
                         width, height = 3, 3
-                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS):
+                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
                             msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
@@ -276,16 +293,18 @@ while running:
 
         # Bombing update
         prev_health = player_health
-        player_health, shake_offset = bombing.update(player_health)
-        if player_health < prev_health:
+        buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
+        player_health, shake_offset, bombed = bombing.update(player_health, buildable_tiles, buildings)
+        if bombed:
             bomb_anim_active = True
             bomb_anim_start = current_time
-            msg_box.show("Your city was bombed!", "Rebuild and stay resilient - SDG 9.", box_type="war", position="corner")
+            msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
 
         # --- Drawing ---
         screen.fill(BLACK)
         shake_x, shake_y = shake_offset
         draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
+        draw_craters(screen, bombing.crater_patches, crater_img, scaled_tile_width, scaled_tile_height, shake_x, shake_y)        
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)

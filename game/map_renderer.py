@@ -64,3 +64,16 @@ def get_buildable_gids(tmx_data):
                 if gid != 0:
                     gids.add(gid)
     return gids
+
+def draw_craters(screen, crater_patches, crater_img, scaled_tile_width, scaled_tile_height, dx=0, dy=0):
+    if not crater_img or not crater_patches:
+        return
+
+    for (min_x, min_y, max_x, max_y) in crater_patches:
+        padding = 2  # extra tiles of padding on each side
+        patch_w = (max_x - min_x + 1 + padding * 2) * scaled_tile_width
+        patch_h = (max_y - min_y + 1 + padding * 2) * scaled_tile_height
+        crater_scaled = pygame.transform.scale(crater_img, (int(patch_w), int(patch_h)))
+        draw_x = (min_x - padding) * scaled_tile_width + dx
+        draw_y = (min_y - padding) * scaled_tile_height + dy
+        screen.blit(crater_scaled, (draw_x, draw_y))

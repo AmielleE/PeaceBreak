@@ -24,6 +24,10 @@ def load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT):
     bomb_path = get_asset_path(current_dir, "assets", "images", "bomb.png")
     images["bomb"] = pygame.image.load(bomb_path).convert_alpha() if os.path.exists(bomb_path) else None
 
+    # Crater image
+    crater_path = get_asset_path(current_dir, "assets", "images", "crater.png")
+    images["crater"] = pygame.image.load(crater_path).convert_alpha() if os.path.exists(crater_path) else None
+
     return images
 
 def load_sounds(current_dir):

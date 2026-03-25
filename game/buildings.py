@@ -48,7 +48,10 @@ UPGRADE_COSTS = {
 }
 
 # building placement
-def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h, tmx_data, buildable_gids):
+def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h, tmx_data, buildable_gids, craters=None):
+    if craters is None:
+        craters = []
+        
     for dx in range(width):
         for dy in range(height):
             check_x = tile_x + dx
