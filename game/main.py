@@ -7,7 +7,7 @@ import sys
 
 from settings import *
 from assets import load_images, load_sounds, load_buildings
-from ui import draw_title_screen, draw_name_input, draw_ui_offset, draw_build_menu, draw_menu_info_box, draw_leaderboard
+from ui import draw_title_screen, draw_name_input, draw_ui_offset, draw_build_menu, draw_menu_info_box, draw_leaderboard, draw_instructions_screen
 from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface, get_buildable_gids, draw_craters, get_tile_gid
 from leaderboard import load_leaderboard, add_score, calculate_score
 from effects import draw_bomb_animation, apply_screen_shake
@@ -19,6 +19,7 @@ from buildings import (
 )
 from money import MoneySystem
 from bomb import BombingEvent
+from people import load_people_sprites, update_people, draw_people
 from message_box import MessageBox
 
 # --- Pygame init ---
@@ -76,6 +77,9 @@ crater_img = images.get("crater")
 clang_sound = sounds.get("clang")
 bomb_sound_path = sounds.get("bomb_path")
 
+# Load people sprites
+load_people_sprites()
+
 def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
     crater_set = set(craters)
     tiles = []
@@ -90,7 +94,6 @@ def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
                 tiles.append((x, y))
     return tiles
 
-
 # --- Leaderboard ---
 leaderboard = load_leaderboard() or []
 
@@ -103,7 +106,16 @@ buildings = {}
 game_state = "title"
 player_name = ""
 game_over_reason = ""
-play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
+bomb_anim_active = False
+bomb_anim_start = 0
+people = []
+last_person_spawn = 0
+play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 110, 200, 70)
+quit_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 195, 200, 70)
+instructions_continue_button = pygame.Rect(SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT - 80, 170, 50)
+instructions_back_button = pygame.Rect(SCREEN_WIDTH // 2 - 190, SCREEN_HEIGHT - 80, 170, 50)
+leaderboard_back_button = pygame.Rect(SCREEN_WIDTH // 2 - 210, SCREEN_HEIGHT - 80, 180, 50)
+leaderboard_quit_button = pygame.Rect(SCREEN_WIDTH // 2 + 30, SCREEN_HEIGHT - 80, 180, 50)
 menu_x = MENU_X_CLOSED = SCREEN_WIDTH
 MENU_X_OPEN = SCREEN_WIDTH - MENU_WIDTH
 menu_open = False
@@ -157,12 +169,14 @@ SDG_TIPS = [
 
 get_buildable_gids(tmx_data)
 
+
 # --- Game functions ---
 def reset_game():
     global money_system, bombing, player_health, game_over
     global buildings, msg_box
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time, game_over_reason, last_tip_time
+    global people, last_person_spawn
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
@@ -172,6 +186,10 @@ def reset_game():
     msg_box = MessageBox()
     game_over = False
     buildings.clear()
+    
+    people.clear()
+    last_person_spawn = pygame.time.get_ticks()
+    
     game_over_reason = ""
 
     start_time = pygame.time.get_ticks()
@@ -229,23 +247,42 @@ while running:
                 if play_button.collidepoint(event.pos):
                     player_name = ""
                     game_state = "name_input"
+                elif quit_button.collidepoint(event.pos):
+                    running = False
+
             elif event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    reset_game()
-                    game_state = "name_input"
                     player_name = ""
+                    game_state = "name_input"
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
 
         # --- Name input ---
         elif game_state == "name_input":
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN and player_name:
-                    reset_game()
-                    game_state = "game"
+                if event.key == pygame.K_RETURN and player_name.strip():
+                    game_state = "instructions"
                 elif event.key == pygame.K_BACKSPACE:
                     player_name = player_name[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    game_state = "title"
                 else:
                     if len(player_name) < 10 and event.unicode.isprintable():
                         player_name += event.unicode
+                        
+        elif game_state == "instructions":
+             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if instructions_continue_button.collidepoint(event.pos):
+                    reset_game()
+                    game_state = "game"
+                elif instructions_back_button.collidepoint(event.pos):
+                    game_state = "name_input"
+             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    reset_game()
+                    game_state = "game"
+                elif event.key == pygame.K_ESCAPE:
+                    game_state = "name_input"
 
         # --- Game input ---
         elif game_state == "game":
@@ -270,7 +307,7 @@ while running:
                 if click_handled:
                     continue
 
-                # Prevent clicks on open menu area
+                # Prevent clicks on menu area
                 if event.pos[0] >= menu_x and menu_x < SCREEN_WIDTH:
                     continue
 
@@ -296,16 +333,42 @@ while running:
                         else:
                             msg_box.show("Cannot place here!", "Build only on paved grey areas.", box_type="event", position="corner")
 
+        # --- Leaderboard input ---
+        elif game_state == "leaderboard":
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if leaderboard_back_button.collidepoint(event.pos):
+                    game_state = "title"
+                elif leaderboard_quit_button.collidepoint(event.pos):
+                    running = False
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    game_state = "title"
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
     # --- Game logic ---
     if game_state == "title":
         draw_title_screen(
             screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
-            play_button, title_font, subtitle_font, button_font
+            play_button, quit_button,
+            title_font, subtitle_font, button_font
         )
-
+    
     elif game_state == "name_input":
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
-
+    
+    elif game_state == "instructions":
+        draw_instructions_screen(
+            screen,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            title_font,
+            font,
+            small_font,
+            instructions_continue_button,
+            instructions_back_button
+        )
+    
     elif game_state == "game":
         # Menu animation
         if menu_open and menu_x > MENU_X_OPEN:
@@ -369,6 +432,16 @@ while running:
             bomb_anim_active = True
             bomb_anim_start = current_time
             msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
+            
+        # people update
+        last_person_spawn = update_people(
+        people,
+        buildings,
+        scaled_tile_width,
+        scaled_tile_height,
+        last_person_spawn,
+        current_time
+        )  
 
         # --- Drawing ---
         screen.fill(BLACK)
@@ -378,6 +451,7 @@ while running:
         draw_craters(screen, bombing.crater_patches, crater_img, scaled_tile_width, scaled_tile_height, shake_x, shake_y)        
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         bombing.draw(screen, shake_x, shake_y)
+        draw_people(screen, people)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         bomb_anim_active = draw_bomb_animation(screen, bomb_img, bomb_anim_active, bomb_anim_start, 600, SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -386,8 +460,10 @@ while running:
     elif game_state == "leaderboard":
         draw_leaderboard(
             screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT,
-            leaderboard, title_font, font, small_font, game_over_reason
+            leaderboard, title_font, font, small_font, game_over_reason,
+            leaderboard_back_button, leaderboard_quit_button
         )
+       
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
             game_state = "title"

@@ -68,7 +68,6 @@ def calculate_score(money_system, player_health, buildings, start_time, game_dur
 
     return score, total_buildings, upgraded_fully
 
-# Get top N leaderboard entries (default 10)
 def get_top_leaderboard(leaderboard, top_n=10):
     return leaderboard[:top_n]
 
