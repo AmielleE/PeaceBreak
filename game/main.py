@@ -44,10 +44,11 @@ tmx_data = pytmx.util_pygame.load_pygame(map_path)
 map_pixel_width = tmx_data.width * tmx_data.tilewidth
 map_pixel_height = tmx_data.height * tmx_data.tileheight
 
-scaled_tile_width = int(tmx_data.tilewidth * SCALE)
-scaled_tile_height = int(tmx_data.tileheight * SCALE)
-scaled_map_width = int(map_pixel_width * SCALE)
-scaled_map_height = int(map_pixel_height * SCALE)
+# Use rounded tile scaling and derive screen size from tile grid
+scaled_tile_width = max(1, round(tmx_data.tilewidth * SCALE))
+scaled_tile_height = max(1, round(tmx_data.tileheight * SCALE))
+scaled_map_width = tmx_data.width * scaled_tile_width
+scaled_map_height = tmx_data.height * scaled_tile_height
 
 SCREEN_WIDTH = scaled_map_width
 SCREEN_HEIGHT = scaled_map_height
@@ -91,7 +92,7 @@ def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
 
 
 # --- Leaderboard ---
-leaderboard = load_leaderboard()
+leaderboard = load_leaderboard() or []
 
 # --- Game state ---
 money_system = None
@@ -102,8 +103,6 @@ buildings = {}
 game_state = "title"
 player_name = ""
 game_over_reason = ""
-bomb_anim_active = False
-bomb_anim_start = 0
 play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
 menu_x = MENU_X_CLOSED = SCREEN_WIDTH
 MENU_X_OPEN = SCREEN_WIDTH - MENU_WIDTH
@@ -163,26 +162,52 @@ def reset_game():
     global money_system, bombing, player_health, game_over
     global buildings, msg_box
     global menu_open, menu_x, selected_building, last_bonus_tick
-    global start_time
+    global start_time, game_over_reason, last_tip_time
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
-    bombing = BombingEvent(interval=30000, damage=20, shake_duration=500)
+    bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
     bombing.load_sound(bomb_sound_path)
 
     player_health = 100
     msg_box = MessageBox()
     game_over = False
     buildings.clear()
-    
+    game_over_reason = ""
+
     start_time = pygame.time.get_ticks()
     menu_x = MENU_X_CLOSED
     menu_open = False
     selected_building = "house"
     last_bonus_tick = pygame.time.get_ticks()
+    last_tip_time = pygame.time.get_ticks()
     bombing.craters.clear() if bombing else None
 
 def draw_map_wrapper():
     draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, 0, 0)
+
+def get_random_bomb_target():
+    unique_buildings = list(get_unique_buildings(buildings))
+
+    # If buildings exist, always target a building
+    if unique_buildings:
+        b = random.choice(unique_buildings)
+
+        min_x = min(tile[0] for tile in b["tiles"])
+        min_y = min(tile[1] for tile in b["tiles"])
+
+        center_x = int((min_x + b["width"] / 2) * scaled_tile_width)
+        center_y = int((min_y + b["height"] / 2) * scaled_tile_height)
+        return (center_x, center_y)
+
+    # Otherwise keep strikes in the central build area, not on outskirts
+    min_x = int(SCREEN_WIDTH * 0.25)
+    max_x = int(SCREEN_WIDTH * 0.75)
+    min_y = int(SCREEN_HEIGHT * 0.18)
+    max_y = int(SCREEN_HEIGHT * 0.82)
+
+    rand_x = random.randint(min_x, max_x)
+    rand_y = random.randint(min_y, max_y)
+    return (rand_x, rand_y)
 
 # --- Initial reset ---
 reset_game()
@@ -219,7 +244,7 @@ while running:
                 elif event.key == pygame.K_BACKSPACE:
                     player_name = player_name[:-1]
                 else:
-                    if len(player_name) < 10:
+                    if len(player_name) < 10 and event.unicode.isprintable():
                         player_name += event.unicode
 
         # --- Game input ---
@@ -241,9 +266,11 @@ while running:
                             msg_box.show(f"{BUILDING_DATA[b_type]['label']} selected", "Click a tile to place it.", box_type="tip", position="corner")
                             click_handled = True
                             break
+
                 if click_handled:
                     continue
-                # Prevent clicks on menu area
+
+                # Prevent clicks on open menu area
                 if event.pos[0] >= menu_x and menu_x < SCREEN_WIDTH:
                     continue
 
@@ -271,11 +298,14 @@ while running:
 
     # --- Game logic ---
     if game_state == "title":
-        draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT, play_button, title_font, subtitle_font, button_font)
-    
+        draw_title_screen(
+            screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
+            play_button, title_font, subtitle_font, button_font
+        )
+
     elif game_state == "name_input":
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
-    
+
     elif game_state == "game":
         # Menu animation
         if menu_open and menu_x > MENU_X_OPEN:
@@ -297,11 +327,25 @@ while running:
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
+            total = count_buildings(buildings)
+            upgraded = count_upgraded(buildings)
+            score = total * 5 + upgraded * 10 + max(0, player_health) * 3 + max(0, money_system.money) * 2
+            # add_score(player_name, score, leaderboard)
+
+            if player_health <= 0 and money_system.money <= 0:
+                game_over_reason = "Game Over! Health and money reached 0."
+            elif player_health <= 0:
+                game_over_reason = "Game Over! Health reached 0."
+            elif money_system.money <= 0:
+                game_over_reason = "Game Over! Money reached 0."
+            else:
+                game_over_reason = "Time is up."
+
             score, total, upgraded = calculate_score(money_system, player_health, buildings, start_time, GAME_DURATION)
             add_score(leaderboard, player_name, score)
             game_state = "leaderboard"
 
-        # Bombing interval
+        # Bombing interval scales with city size
         building_count = len(get_unique_buildings(buildings))
         bombing.interval = max(5000, 30000 - building_count * 400)
 
@@ -317,7 +361,10 @@ while running:
         # Bombing update
         prev_health = player_health
         buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
-        player_health, shake_offset, bombed = bombing.update(player_health, buildable_tiles, buildings)
+        
+        # Bombing update with central/building targeting
+        bomb_target = get_random_bomb_target()
+        player_health, shake_offset = bombing.update(player_health, bomb_target)
         if bombed:
             bomb_anim_active = True
             bomb_anim_start = current_time
@@ -326,16 +373,21 @@ while running:
         # --- Drawing ---
         screen.fill(BLACK)
         shake_x, shake_y = shake_offset
+
         draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         draw_craters(screen, bombing.crater_patches, crater_img, scaled_tile_width, scaled_tile_height, shake_x, shake_y)        
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
+        bombing.draw(screen, shake_x, shake_y)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         bomb_anim_active = draw_bomb_animation(screen, bomb_img, bomb_anim_active, bomb_anim_start, 600, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":
-        draw_leaderboard(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, leaderboard, title_font, font, small_font, game_over_reason)
+        draw_leaderboard(
+            screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT,
+            leaderboard, title_font, font, small_font, game_over_reason
+        )
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
             game_state = "title"
