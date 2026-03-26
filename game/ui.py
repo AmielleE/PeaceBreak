@@ -13,9 +13,13 @@ PANEL_BROWN = (70, 40, 20)
 HIGHLIGHT = (255, 230, 120)
 
 # title screen
-def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT, play_button, title_font, subtitle_font, button_font):
+def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
+                      play_button, quit_button,
+                      title_font, subtitle_font, button_font):
     mouse_pos = pygame.mouse.get_pos()
-    hovered = play_button.collidepoint(mouse_pos)
+
+    play_hovered = play_button.collidepoint(mouse_pos)
+    quit_hovered = quit_button.collidepoint(mouse_pos)
 
     if title_bg:
         screen.blit(title_bg, (0, 0))
@@ -33,13 +37,23 @@ def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT, play_button
         subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 55))
         screen.blit(subtitle_text, subtitle_rect)
 
-    button_color = BRIGHT_RED if hovered else RED
-    pygame.draw.rect(screen, button_color, play_button, border_radius=12)
+    # Play button
+    play_color = BRIGHT_RED if play_hovered else RED
+    pygame.draw.rect(screen, play_color, play_button, border_radius=12)
     pygame.draw.rect(screen, WHITE, play_button, width=3, border_radius=12)
 
     play_text = button_font.render("PLAY", True, WHITE)
     play_rect = play_text.get_rect(center=play_button.center)
     screen.blit(play_text, play_rect)
+
+    # Quit button
+    quit_color = (170, 50, 50) if quit_hovered else (110, 35, 35)
+    pygame.draw.rect(screen, quit_color, quit_button, border_radius=12)
+    pygame.draw.rect(screen, WHITE, quit_button, width=3, border_radius=12)
+
+    quit_text = button_font.render("QUIT", True, WHITE)
+    quit_rect = quit_text.get_rect(center=quit_button.center)
+    screen.blit(quit_text, quit_rect)
 
 # name input
 def draw_name_input(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name):
@@ -56,7 +70,9 @@ def draw_name_input(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, font, pl
     screen.blit(name_surface, (SCREEN_WIDTH // 2 - name_surface.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
 
 # leaderboard
-def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, leaderboard, title_font, font, small_font, game_over_reason):
+def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT,
+                     leaderboard, title_font, font, small_font,
+                     game_over_reason, back_button, quit_button):
     draw_map_func()
 
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -64,20 +80,36 @@ def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, leaderb
     screen.blit(overlay, (0, 0))
 
     title = title_font.render("Leaderboard", True, WHITE)
-    screen.blit(title, (SCREEN_WIDTH//2 - title.get_width() // 2, 50))
+    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 50))
 
     if game_over_reason:
         reason_text = font.render(game_over_reason, True, RED)
-        screen.blit(reason_text, (SCREEN_WIDTH//2 - reason_text.get_width() // 2, 120))
+        screen.blit(reason_text, (SCREEN_WIDTH // 2 - reason_text.get_width() // 2, 120))
 
     start_y = 150 if not game_over_reason else 160
 
     for i, entry in enumerate(leaderboard[:10]):
         line = font.render(f"{i+1}. {entry['name']} - {entry['score']}", True, WHITE)
-        screen.blit(line, (SCREEN_WIDTH//2 - line.get_width() // 2, start_y + i * 40))
+        screen.blit(line, (SCREEN_WIDTH // 2 - line.get_width() // 2, start_y + i * 40))
 
-    hint = small_font.render("Press R to return", True, WHITE)
-    screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 50))
+    mouse_pos = pygame.mouse.get_pos()
+    back_hovered = back_button.collidepoint(mouse_pos)
+    quit_hovered = quit_button.collidepoint(mouse_pos)
+
+    back_color = BRIGHT_RED if back_hovered else RED
+    quit_color = (170, 50, 50) if quit_hovered else (110, 35, 35)
+
+    pygame.draw.rect(screen, back_color, back_button, border_radius=10)
+    pygame.draw.rect(screen, WHITE, back_button, width=2, border_radius=10)
+
+    pygame.draw.rect(screen, quit_color, quit_button, border_radius=10)
+    pygame.draw.rect(screen, WHITE, quit_button, width=2, border_radius=10)
+
+    back_text = small_font.render("Back to Title", True, WHITE)
+    quit_text = small_font.render("Quit Game", True, WHITE)
+
+    screen.blit(back_text, back_text.get_rect(center=back_button.center))
+    screen.blit(quit_text, quit_text.get_rect(center=quit_button.center))
 
 # game UI
 def draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, message, message_timer, SCREEN_HEIGHT): 

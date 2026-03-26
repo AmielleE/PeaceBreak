@@ -1,5 +1,13 @@
 [
     {
+        "name": "bruh",
+        "score": 2725
+    },
+    {
+        "name": "bru",
+        "score": 2486
+    },
+    {
         "name": "amielle",
         "score": 760
     },
@@ -30,13 +38,5 @@
     {
         "name": "amielle",
         "score": 320
-    },
-    {
-        "name": "test",
-        "score": 320
-    },
-    {
-        "name": "sbvas",
-        "score": 315
     }
 ]

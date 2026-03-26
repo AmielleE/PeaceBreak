@@ -7,8 +7,11 @@ import random
 from settings import *
 from assets import load_images, load_sounds, load_buildings
 from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface
+from ui import (
+    draw_title_screen, draw_name_input, draw_ui_offset,
+    draw_build_menu, draw_menu_info_box, draw_leaderboard
+)
 from leaderboard import load_leaderboard, add_score, calculate_score
-from ui import draw_title_screen, draw_name_input, draw_leaderboard, draw_ui_offset, draw_build_menu, update_menu_animation, draw_bomb_animation
 from effects import draw_bomb_animation, apply_screen_shake
 from buildings import (
     BUILDING_DATA, MENU_ORDER, TYPES,
@@ -18,6 +21,7 @@ from buildings import (
 )
 from money import MoneySystem
 from bomb import BombingEvent
+from people import update_people, draw_people
 
 # --- Pygame init ---
 pygame.init()
@@ -82,7 +86,12 @@ player_name = ""
 game_over_reason = ""
 bomb_anim_active = False
 bomb_anim_start = 0
-play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 140, 200, 70)
+people = []
+last_person_spawn = 0
+play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 110, 200, 70)
+quit_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 195, 200, 70)
+leaderboard_back_button = pygame.Rect(SCREEN_WIDTH // 2 - 210, SCREEN_HEIGHT - 80, 180, 50)
+leaderboard_quit_button = pygame.Rect(SCREEN_WIDTH // 2 + 30, SCREEN_HEIGHT - 80, 180, 50)
 menu_x = MENU_X_CLOSED = SCREEN_WIDTH
 MENU_X_OPEN = SCREEN_WIDTH - MENU_WIDTH
 menu_open = False
@@ -93,12 +102,14 @@ last_bonus_tick = 0
 last_tip_time = 0
 start_time = 0
 
+
 # --- Game functions ---
 def reset_game():
     global money_system, bombing, player_health, game_over
     global message, message_timer, buildings
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time
+    global people, last_person_spawn
 
     money_system = MoneySystem(start_amount=50, increment=10, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500)
@@ -109,6 +120,9 @@ def reset_game():
     message = ""
     message_timer = 0
     buildings.clear()
+    
+    people.clear()
+    last_person_spawn = pygame.time.get_ticks()
     
     start_time = pygame.time.get_ticks()
     menu_x = MENU_X_CLOSED
@@ -139,22 +153,28 @@ while running:
                 if play_button.collidepoint(event.pos):
                     player_name = ""
                     game_state = "name_input"
+                elif quit_button.collidepoint(event.pos):
+                    running = False
+
             elif event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    reset_game()
-                    game_state = "name_input"
                     player_name = ""
+                    game_state = "name_input"
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
 
         # --- Name input ---
         elif game_state == "name_input":
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN and player_name:
+                if event.key == pygame.K_RETURN and player_name.strip():
                     reset_game()
                     game_state = "game"
                 elif event.key == pygame.K_BACKSPACE:
                     player_name = player_name[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    game_state = "title"
                 else:
-                    if len(player_name) < 10:
+                    if len(player_name) < 10 and event.unicode.isprintable():
                         player_name += event.unicode
 
         # --- Game input ---
@@ -167,6 +187,7 @@ while running:
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
                 click_handled = False
+
                 # Menu clicks
                 if menu_x < SCREEN_WIDTH:
                     for rect, b_type in slot_rects:
@@ -176,8 +197,10 @@ while running:
                             message_timer = current_time
                             click_handled = True
                             break
+
                 if click_handled:
                     continue
+
                 # Prevent clicks on menu area
                 if event.pos[0] >= menu_x and menu_x < SCREEN_WIDTH:
                     continue
@@ -202,11 +225,29 @@ while running:
                                 clang_sound.play()
                         else:
                             message = "Cannot place building here!"
+
                     message_timer = current_time
 
+        # --- Leaderboard input ---
+        elif game_state == "leaderboard":
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if leaderboard_back_button.collidepoint(event.pos):
+                    game_state = "title"
+                elif leaderboard_quit_button.collidepoint(event.pos):
+                    running = False
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    game_state = "title"
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
     # --- Game logic ---
     if game_state == "title":
-        draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT, play_button, title_font, subtitle_font, button_font)
+        draw_title_screen(
+            screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
+            play_button, quit_button,
+            title_font, subtitle_font, button_font
+        )
     
     elif game_state == "name_input":
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
@@ -261,21 +302,33 @@ while running:
         if player_health < prev_health:
             bomb_anim_active = True
             bomb_anim_start = current_time
+            
+        # people update
+        last_person_spawn = update_people(
+        people,
+        buildings,
+        scaled_tile_width,
+        scaled_tile_height,
+        last_person_spawn,
+        current_time
+        )
 
         # --- Drawing ---
         screen.fill(BLACK)
         shake_x, shake_y = shake_offset
         draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
+        draw_people(screen, people)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, message, message_timer, SCREEN_HEIGHT)
         bomb_anim_active = draw_bomb_animation(screen, bomb_img, bomb_anim_active, bomb_anim_start, 600, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":
-        draw_leaderboard(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, leaderboard, title_font, font, small_font, game_over_reason)
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_r]:
-            game_state = "title"
+        draw_leaderboard(
+            screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT,
+            leaderboard, title_font, font, small_font, game_over_reason,
+            leaderboard_back_button, leaderboard_quit_button
+        )
 
     pygame.display.update()
     clock.tick(60)
