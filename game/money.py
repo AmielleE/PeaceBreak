@@ -29,7 +29,7 @@ class MoneySystem:
         self.animations.append({'amount': amount, 'pos': list(pos), 'alpha': 255})
 
     def draw(self, surface, font, position=(20, 20)):
-    # Only draw floating animations, HUD draws the static money value
+        # Only draw floating animations, HUD draws the static money value
         for anim in self.animations:
             text = f"+${anim['amount']}" if anim['amount'] > 0 else f"${anim['amount']}"
             main_color = (100, 255, 140) if anim['amount'] > 0 else (255, 80, 80)

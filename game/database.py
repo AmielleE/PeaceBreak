@@ -31,8 +31,8 @@ def create_tables():
     conn.commit()
     conn.close()
 
-    def add_player(username):
-        conn = connect_db()
+def add_player(username):
+    conn = connect_db()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -42,7 +42,6 @@ def create_tables():
 
     conn.commit()
     conn.close()
-
 
 def get_player_id(username):
     conn = connect_db()

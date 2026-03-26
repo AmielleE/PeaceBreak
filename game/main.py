@@ -108,8 +108,6 @@ buildings = {}
 game_state = "title"
 player_name = ""
 game_over_reason = ""
-bomb_anim_active = False
-bomb_anim_start = 0
 people = []
 last_person_spawn = 0
 play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 110, 200, 70)
@@ -395,7 +393,6 @@ while running:
             total = count_buildings(buildings)
             upgraded = count_upgraded(buildings)
             score = total * 5 + upgraded * 10 + max(0, player_health) * 3 + max(0, money_system.money) * 2
-            # add_score(player_name, score, leaderboard)
 
             if player_health <= 0 and money_system.money <= 0:
                 game_over_reason = "Game Over! Health and money reached 0."
@@ -429,12 +426,10 @@ while running:
         
         # Bombing update with central/building targeting
         bomb_target = get_random_bomb_target()
-        player_health, shake_offset = bombing.update(player_health, bomb_target)
+        player_health, shake_offset, bombed = bombing.update(player_health, buildable_tiles, buildings, bomb_target)
         if bombed:
-            bomb_anim_active = True
-            bomb_anim_start = current_time
             msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
-            
+                    
         # people update
         last_person_spawn = update_people(
         people,
@@ -456,7 +451,6 @@ while running:
         draw_people(screen, people)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
-        bomb_anim_active = draw_bomb_animation(screen, bomb_img, bomb_anim_active, bomb_anim_start, 600, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":

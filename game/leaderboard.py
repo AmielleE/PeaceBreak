@@ -2,6 +2,7 @@ import json
 import os
 import pygame
 import sys
+from database import update_best_score
 
 LEADERBOARD_FILE = "leaderboard.json"
 
@@ -30,6 +31,7 @@ def add_score(leaderboard, name, score):
     leaderboard.append({"name": name, "score": score})
     leaderboard.sort(key=lambda x: x["score"], reverse=True)
     save_leaderboard(leaderboard)
+    update_best_score(name, score)  # also save to SQLite
 
 # Calculate a player's score based on game state
 def calculate_score(money_system, player_health, buildings, start_time, game_duration):
