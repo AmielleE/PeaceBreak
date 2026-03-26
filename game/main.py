@@ -9,7 +9,7 @@ from assets import load_images, load_sounds, load_buildings
 from map_renderer import draw_map_offset, draw_buildings_offset, scale_surface
 from ui import (
     draw_title_screen, draw_name_input, draw_ui_offset,
-    draw_build_menu, draw_menu_info_box, draw_leaderboard
+    draw_build_menu, draw_menu_info_box, draw_leaderboard, draw_instructions_screen
 )
 from leaderboard import load_leaderboard, add_score, calculate_score
 from effects import draw_bomb_animation, apply_screen_shake
@@ -21,7 +21,7 @@ from buildings import (
 )
 from money import MoneySystem
 from bomb import BombingEvent
-from people import update_people, draw_people
+from people import load_people_sprites, update_people, draw_people
 
 # --- Pygame init ---
 pygame.init()
@@ -70,6 +70,9 @@ bomb_img = images.get("bomb")
 clang_sound = sounds.get("clang")
 bomb_sound_path = sounds.get("bomb_path")
 
+# Load people sprites
+load_people_sprites()
+
 # --- Leaderboard ---
 leaderboard = load_leaderboard()
 
@@ -90,6 +93,8 @@ people = []
 last_person_spawn = 0
 play_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 110, 200, 70)
 quit_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 195, 200, 70)
+instructions_continue_button = pygame.Rect(SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT - 80, 170, 50)
+instructions_back_button = pygame.Rect(SCREEN_WIDTH // 2 - 190, SCREEN_HEIGHT - 80, 170, 50)
 leaderboard_back_button = pygame.Rect(SCREEN_WIDTH // 2 - 210, SCREEN_HEIGHT - 80, 180, 50)
 leaderboard_quit_button = pygame.Rect(SCREEN_WIDTH // 2 + 30, SCREEN_HEIGHT - 80, 180, 50)
 menu_x = MENU_X_CLOSED = SCREEN_WIDTH
@@ -167,8 +172,7 @@ while running:
         elif game_state == "name_input":
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN and player_name.strip():
-                    reset_game()
-                    game_state = "game"
+                    game_state = "instructions"
                 elif event.key == pygame.K_BACKSPACE:
                     player_name = player_name[:-1]
                 elif event.key == pygame.K_ESCAPE:
@@ -176,6 +180,20 @@ while running:
                 else:
                     if len(player_name) < 10 and event.unicode.isprintable():
                         player_name += event.unicode
+                        
+        elif game_state == "instructions":
+             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if instructions_continue_button.collidepoint(event.pos):
+                    reset_game()
+                    game_state = "game"
+                elif instructions_back_button.collidepoint(event.pos):
+                    game_state = "name_input"
+             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    reset_game()
+                    game_state = "game"
+                elif event.key == pygame.K_ESCAPE:
+                    game_state = "name_input"
 
         # --- Game input ---
         elif game_state == "game":
@@ -251,6 +269,18 @@ while running:
     
     elif game_state == "name_input":
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
+    
+    elif game_state == "instructions":
+        draw_instructions_screen(
+            screen,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            title_font,
+            font,
+            small_font,
+            instructions_continue_button,
+            instructions_back_button
+        )
     
     elif game_state == "game":
         # Menu animation

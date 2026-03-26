@@ -1,6 +1,36 @@
 import random
 import math
+import os
 import pygame
+
+
+SPRITE_FOLDER = os.path.join("..", "assets", "images", "citizens")
+PEOPLE_SPRITES = []
+
+
+def load_people_sprites():
+    global PEOPLE_SPRITES
+    PEOPLE_SPRITES = []
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sprite_folder_path = os.path.abspath(os.path.join(current_dir, SPRITE_FOLDER))
+
+    if not os.path.exists(sprite_folder_path):
+        print(f"[people.py] Sprite folder not found: {sprite_folder_path}")
+        return
+
+    for filename in os.listdir(sprite_folder_path):
+        if filename.lower().endswith(".png"):
+            full_path = os.path.join(sprite_folder_path, filename)
+            try:
+                sprite = pygame.image.load(full_path).convert_alpha()
+                PEOPLE_SPRITES.append(sprite)
+                print(f"[people.py] Loaded sprite: {filename}")
+            except pygame.error as e:
+                print(f"[people.py] Failed to load {filename}: {e}")
+
+    if not PEOPLE_SPRITES:
+        print("[people.py] No citizen sprites found, rectangles will be used.")
 
 
 def _get_unique_buildings(buildings):
@@ -17,11 +47,6 @@ def _get_unique_buildings(buildings):
 
 
 def _building_point(building, scaled_tile_width, scaled_tile_height):
-    """
-    Returns a point near the bottom-center of a building footprint.
-    This makes walkers look like they are moving between buildings
-    instead of snapping to top-left corners.
-    """
     top_left_tile = building["tiles"][0]
     tile_x, tile_y = top_left_tile
 
@@ -32,11 +57,6 @@ def _building_point(building, scaled_tile_width, scaled_tile_height):
 
 
 def _role_weight(building_type, role):
-    """
-    Biases where people come from and where they go.
-    Houses/apartments are more likely origins.
-    Hospitals/schools are more likely destinations.
-    """
     if role == "origin":
         if building_type == "house":
             return 5
@@ -112,36 +132,45 @@ def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
 
     speed = random.uniform(0.6, 1.2)
 
-    # Tiny rectangle people for now
+    sprite = random.choice(PEOPLE_SPRITES) if PEOPLE_SPRITES else None
+
+    # tweak these if the sprite looks too big/small in game
+    sprite_scale = 0.13
+
+    if sprite:
+        sprite_width = max(1, int(sprite.get_width() * sprite_scale))
+        sprite_height = max(1, int(sprite.get_height() * sprite_scale))
+    else:
+        sprite_width = 4
+        sprite_height = 7
+
     person = {
         "x": float(start_x),
         "y": float(start_y),
         "target_x": float(target_x),
         "target_y": float(target_y),
         "speed": speed,
-        "width": 4,
-        "height": 7,
+        "width": sprite_width,
+        "height": sprite_height,
         "color": random.choice([
             (30, 30, 30),
             (60, 70, 130),
             (120, 40, 40),
             (90, 110, 60),
             (140, 120, 80)
-        ])
+        ]),
+        "sprite": sprite,
+        "sprite_scale": sprite_scale
     }
 
     people.append(person)
 
 
 def update_people(people, buildings, scaled_tile_width, scaled_tile_height, last_spawn_time, current_time):
-    """
-    Returns updated last_spawn_time.
-    """
     unique_buildings = _get_unique_buildings(buildings)
     building_count = len(unique_buildings)
     max_people = _max_people_for_count(building_count)
 
-    # Spawn interval gets slightly faster as city grows
     if building_count < 3:
         spawn_interval = 999999
     elif building_count < 6:
@@ -180,9 +209,26 @@ def draw_people(screen, people):
         x = int(person["x"])
         y = int(person["y"])
 
-        # tiny shadow
-        shadow_rect = pygame.Rect(x - 1, y + person["height"] - 1, person["width"] + 2, 2)
-        pygame.draw.rect(screen, (20, 20, 20), shadow_rect)
+        if person["sprite"]:
+            scaled_sprite = pygame.transform.scale(
+                person["sprite"],
+                (
+                    max(1, int(person["sprite"].get_width() * person["sprite_scale"])),
+                    max(1, int(person["sprite"].get_height() * person["sprite_scale"]))
+                )
+            )
 
-        body_rect = pygame.Rect(x, y, person["width"], person["height"])
-        pygame.draw.rect(screen, person["color"], body_rect, border_radius=1)
+            draw_x = x - scaled_sprite.get_width() // 2
+            draw_y = y - scaled_sprite.get_height() + 2
+            screen.blit(scaled_sprite, (draw_x, draw_y))
+        else:
+            shadow_rect = pygame.Rect(
+                x - 1,
+                y + person["height"] - 1,
+                person["width"] + 2,
+                2
+            )
+            pygame.draw.rect(screen, (20, 20, 20), shadow_rect)
+
+            body_rect = pygame.Rect(x, y, person["width"], person["height"])
+            pygame.draw.rect(screen, person["color"], body_rect, border_radius=1)

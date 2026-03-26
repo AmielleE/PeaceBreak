@@ -69,6 +69,63 @@ def draw_name_input(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, font, pl
     name_surface = font.render(player_name, True, WHITE)
     screen.blit(name_surface, (SCREEN_WIDTH // 2 - name_surface.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
 
+def draw_instructions_screen(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, font, small_font, continue_button, back_button):
+    screen.fill((20, 30, 60))
+
+    title_text = title_font.render("How to Play", True, (255, 255, 255))
+    title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 70))
+    screen.blit(title_text, title_rect)
+
+    instructions = [
+        "Goal:",
+        "Rebuild the city and survive the bombing.",
+        "",
+        "Controls:",
+        "- Click a building slot in the build menu to select a building",
+        "- Press B to open or close the build menu",
+        "- Click on the map to place the selected building",
+        "- Click existing buildings to upgrade them",
+        "",
+        "Buildings:",
+        "- Houses and Apartments help grow the city",
+        "- Hospitals and Schools improve health",
+        "- Power Plants and Airports produce more money",
+        "",
+        "Game Over:",
+        "- The game ends if health reaches 0",
+        "- Or if time runs out / your lose condition triggers"
+    ]
+
+    start_y = 130
+    line_spacing = 28
+
+    for i, line in enumerate(instructions):
+        if line.endswith(":"):
+            text = font.render(line, True, (255, 220, 120))
+        else:
+            text = small_font.render(line, True, (255, 255, 255))
+        screen.blit(text, (80, start_y + i * line_spacing))
+
+    mouse_pos = pygame.mouse.get_pos()
+
+    continue_hovered = continue_button.collidepoint(mouse_pos)
+    back_hovered = back_button.collidepoint(mouse_pos)
+
+    continue_color = (255, 70, 70) if continue_hovered else (220, 40, 40)
+    back_color = (170, 50, 50) if back_hovered else (110, 35, 35)
+
+    pygame.draw.rect(screen, continue_color, continue_button, border_radius=10)
+    pygame.draw.rect(screen, (255, 255, 255), continue_button, width=2, border_radius=10)
+
+    pygame.draw.rect(screen, back_color, back_button, border_radius=10)
+    pygame.draw.rect(screen, (255, 255, 255), back_button, width=2, border_radius=10)
+
+    continue_text = small_font.render("Continue", True, (255, 255, 255))
+    back_text = small_font.render("Back", True, (255, 255, 255))
+
+    screen.blit(continue_text, continue_text.get_rect(center=continue_button.center))
+    screen.blit(back_text, back_text.get_rect(center=back_button.center))
+
 # leaderboard
 def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT,
                      leaderboard, title_font, font, small_font,
