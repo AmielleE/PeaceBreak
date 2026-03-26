@@ -1,5 +1,6 @@
 from database import create_tables
 create_tables()
+
 import pygame
 import pytmx
 import os
@@ -176,7 +177,7 @@ def reset_game():
     global buildings, msg_box
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time, game_over_reason, last_tip_time
-    global people, last_person_spawn
+    global people, last_person_spawn, leaderboard
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
@@ -405,6 +406,7 @@ while running:
 
             score, total, upgraded = calculate_score(money_system, player_health, buildings, start_time, GAME_DURATION)
             add_score(leaderboard, player_name, score)
+            leaderboard = load_leaderboard()  # reload from DB so leaderboard shows latest scores
             game_state = "leaderboard"
 
         # Bombing interval scales with city size

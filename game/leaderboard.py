@@ -2,7 +2,9 @@ import json
 import os
 import pygame
 import sys
-from database import update_best_score
+import sqlite3
+from database import update_best_score, get_leaderboard_as_dicts
+from buildings import get_unique_buildings
 
 LEADERBOARD_FILE = "leaderboard.json"
 
@@ -12,31 +14,49 @@ def get_leaderboard_path():
         return os.path.join(os.path.dirname(sys.executable), "leaderboard.json")
     return "leaderboard.json"
 
-# Load leaderboard from file
-def load_leaderboard(filename="leaderboard.json"):
+def load_leaderboard():
+    # Load from SQLite, fall back to JSON if DB is empty.
+    try:
+        entries = get_leaderboard_as_dicts()
+        if entries:
+            return entries
+    except Exception as e:
+        print(f"[leaderboard] DB load failed: {e}")
+
+    # Fallback to JSON
     path = get_leaderboard_path()
     if not os.path.exists(path):
         return []
-    with open(path, "r") as f:
-        return json.load(f)
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return []
 
-# Save leaderboard to file
 def save_leaderboard(leaderboard):
+    # Save to JSON as backup.
     path = get_leaderboard_path()
-    with open(path, "w") as f:
-        json.dump(leaderboard[:10], f, indent=4)
+    try:
+        with open(path, "w") as f:
+            json.dump(leaderboard[:10], f, indent=4)
+    except Exception as e:
+        print(f"[leaderboard] JSON save failed: {e}")
 
 # Add a new score and keep top 10
 def add_score(leaderboard, name, score):
+    # Save to database
+    try:
+        update_best_score(name, score)
+    except Exception as e:
+        print(f"[leaderboard] DB score update failed: {e}")
+
+    # Update in-memory list and JSON backup
     leaderboard.append({"name": name, "score": score})
     leaderboard.sort(key=lambda x: x["score"], reverse=True)
-    save_leaderboard(leaderboard)
-    update_best_score(name, score)  # also save to SQLite
+    save_leaderboard(leaderboard[:10])
 
 # Calculate a player's score based on game state
 def calculate_score(money_system, player_health, buildings, start_time, game_duration):
-    from buildings import get_unique_buildings
-
     unique = get_unique_buildings(buildings)
     total_buildings = len(unique)
 
@@ -70,6 +90,10 @@ def calculate_score(money_system, player_health, buildings, start_time, game_dur
 
     return score, total_buildings, upgraded_fully
 
-def get_top_leaderboard(leaderboard, top_n=10):
-    return leaderboard[:top_n]
-
+def get_top_leaderboard(limit=10):
+    # Get top scores directly from database
+    try:
+        return get_leaderboard_as_dicts(limit)
+    except Exception as e:
+        print(f"[leaderboard] DB fetch failed: {e}")
+        return []

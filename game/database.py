@@ -1,13 +1,20 @@
 import sqlite3
 import os
+import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-DB_PATH = os.path.join(DATA_DIR, "PeaceBreak.db")
+def get_db_path():
+    """Get database path that works both normally and when bundled with PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    data_dir = os.path.join(base, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, "PeaceBreak.db")
 
 def connect_db():
-    os.makedirs(DATA_DIR, exist_ok=True)  # create data folder if needed
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(get_db_path())
 
 def create_tables():
     conn = connect_db()
@@ -34,31 +41,17 @@ def create_tables():
 def add_player(username):
     conn = connect_db()
     cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT OR IGNORE INTO players (username)
-    VALUES (?)
-    """, (username,))
-
+    cursor.execute("INSERT OR IGNORE INTO players (username) VALUES (?)", (username,))
     conn.commit()
     conn.close()
 
 def get_player_id(username):
     conn = connect_db()
     cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT player_id FROM players
-    WHERE username = ?
-    """, (username,))
-
+    cursor.execute("SELECT player_id FROM players WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
-
-    if row:
-        return row[0]
-    return None
-
+    return row[0] if row else None
 
 def update_best_score(username, new_score):
     conn = connect_db()
@@ -82,11 +75,9 @@ def update_best_score(username, new_score):
     conn.commit()
     conn.close()
 
-
 def get_leaderboard(limit=10):
     conn = connect_db()
     cursor = conn.cursor()
-
     cursor.execute("""
     SELECT players.username, player_best_scores.best_score
     FROM player_best_scores
@@ -94,7 +85,10 @@ def get_leaderboard(limit=10):
     ORDER BY player_best_scores.best_score DESC
     LIMIT ?
     """, (limit,))
-
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+def get_leaderboard_as_dicts(limit=10):
+    rows = get_leaderboard(limit)
+    return [{"name": row[0], "score": row[1]} for row in rows]
