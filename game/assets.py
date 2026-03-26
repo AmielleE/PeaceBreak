@@ -1,8 +1,15 @@
 import pygame
 import os
+import sys
 
 def get_asset_path(current_dir, *paths):
-    return os.path.abspath(os.path.join(current_dir, "..", *paths))
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        base_path = sys._MEIPASS
+    else:
+        # Running normally
+        base_path = os.path.abspath(os.path.join(current_dir, ".."))
+    return os.path.join(base_path, *paths)
 
 def load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT):
     images = {}
@@ -23,6 +30,10 @@ def load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT):
     # Bomb image
     bomb_path = get_asset_path(current_dir, "assets", "images", "bomb.png")
     images["bomb"] = pygame.image.load(bomb_path).convert_alpha() if os.path.exists(bomb_path) else None
+
+    # Crater image
+    crater_path = get_asset_path(current_dir, "assets", "images", "crater.png")
+    images["crater"] = pygame.image.load(crater_path).convert_alpha() if os.path.exists(crater_path) else None
 
     return images
 
