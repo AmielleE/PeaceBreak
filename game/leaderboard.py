@@ -1,19 +1,28 @@
 import json
 import os
 import pygame
+import sys
 
 LEADERBOARD_FILE = "leaderboard.json"
 
+def get_leaderboard_path():
+    # Save next to the exe, not inside the bundle
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "leaderboard.json")
+    return "leaderboard.json"
+
 # Load leaderboard from file
 def load_leaderboard(filename="leaderboard.json"):
-    if not os.path.exists(filename):
+    path = get_leaderboard_path()
+    if not os.path.exists(path):
         return []
-    with open(filename, "r") as f:
+    with open(path, "r") as f:
         return json.load(f)
 
 # Save leaderboard to file
 def save_leaderboard(leaderboard):
-    with open(LEADERBOARD_FILE, "w") as f:
+    path = get_leaderboard_path()
+    with open(path, "w") as f:
         json.dump(leaderboard[:10], f, indent=4)
 
 # Add a new score and keep top 10
@@ -62,3 +71,4 @@ def calculate_score(money_system, player_health, buildings, start_time, game_dur
 # Get top N leaderboard entries (default 10)
 def get_top_leaderboard(leaderboard, top_n=10):
     return leaderboard[:top_n]
+

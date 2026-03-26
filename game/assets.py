@@ -1,8 +1,15 @@
 import pygame
 import os
+import sys
 
 def get_asset_path(current_dir, *paths):
-    return os.path.abspath(os.path.join(current_dir, "..", *paths))
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        base_path = sys._MEIPASS
+    else:
+        # Running normally
+        base_path = os.path.abspath(os.path.join(current_dir, ".."))
+    return os.path.join(base_path, *paths)
 
 def load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT):
     images = {}

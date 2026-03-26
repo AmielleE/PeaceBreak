@@ -3,6 +3,7 @@ import pytmx
 import os
 import json
 import random
+import sys
 
 from settings import *
 from assets import load_images, load_sounds, load_buildings
@@ -31,7 +32,13 @@ clock = pygame.time.Clock()
 
 # --- Map loading ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
-map_path = os.path.abspath(os.path.join(current_dir, "..", "assets", "world.tmx"))
+
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(os.path.join(current_dir, ".."))
+
+map_path = os.path.join(base_path, "assets", "world.tmx")
 tmx_data = pytmx.util_pygame.load_pygame(map_path)
 
 map_pixel_width = tmx_data.width * tmx_data.tilewidth
