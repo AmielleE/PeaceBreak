@@ -1,38 +1,28 @@
 import json
 import os
 import pygame
+import sys
 
 LEADERBOARD_FILE = "leaderboard.json"
 
+def get_leaderboard_path():
+    # Save next to the exe, not inside the bundle
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "leaderboard.json")
+    return "leaderboard.json"
+
 # Load leaderboard from file
 def load_leaderboard(filename="leaderboard.json"):
-    if not os.path.exists(filename):
+    path = get_leaderboard_path()
+    if not os.path.exists(path):
         return []
-    with open(filename, "r") as f:
+    with open(path, "r") as f:
         return json.load(f)
-
-def add_score(name, score, filename="leaderboard.json"):
-    leaderboard = load_leaderboard(filename)
-    leaderboard.append({"name": name, "score": score})
-    leaderboard.sort(key=lambda x: x["score"], reverse=True)
-    with open(filename, "w") as f:
-        json.dump(leaderboard, f, indent=4)
-    return leaderboard
-
-def draw_leaderboard(screen, leaderboard, x=50, y=50, font_size=30):
-    import pygame
-    font = pygame.font.SysFont(None, font_size)
-    title_text = font.render("Leaderboard", True, (255, 255, 255))
-    screen.blit(title_text, (x, y))
-    for i, entry in enumerate(leaderboard):
-        name = entry.get("name", "Unknown")
-        score = entry.get("score", 0)
-        entry_text = font.render(f"{i+1}. {name} - {score}", True, (255, 255, 255))
-        screen.blit(entry_text, (x, y + (i + 1) * (font_size + 5)))
 
 # Save leaderboard to file
 def save_leaderboard(leaderboard):
-    with open(LEADERBOARD_FILE, "w") as f:
+    path = get_leaderboard_path()
+    with open(path, "w") as f:
         json.dump(leaderboard[:10], f, indent=4)
 
 # Add a new score and keep top 10
@@ -42,28 +32,43 @@ def add_score(leaderboard, name, score):
     save_leaderboard(leaderboard)
 
 # Calculate a player's score based on game state
-def calculate_score(money_system, player_health, buildings):
-    # Count unique buildings
-    unique_buildings = set(id(b) for b in buildings.values())
+def calculate_score(money_system, player_health, buildings, start_time, game_duration):
+    from buildings import get_unique_buildings
 
-    # Count upgraded buildings
-    seen = set()
-    upgraded = 0
-    for b in buildings.values():
-        bid = id(b)
-        if bid not in seen:
-            seen.add(bid)
-            if b["level"] > 0:
-                upgraded += 1
+    unique = get_unique_buildings(buildings)
+    total_buildings = len(unique)
+
+    upgraded_once  = sum(1 for b in unique if b["level"] >= 1)
+    upgraded_fully = sum(1 for b in unique if b["level"] == 2)
+
+    # Survival bonus: how long they lasted as a fraction
+    elapsed = pygame.time.get_ticks() - start_time
+    survival_ratio = min(elapsed / game_duration, 1.0)
+    survival_bonus = int(survival_ratio * 300)
+
+    # SDG-weighted building types
+    SDG_WEIGHTS = {
+        "hospital": 15,  # SDG 3 / SDG 11
+        "school":   12,  # SDG 4 / SDG 11
+        "power":    10,  # SDG 9
+        "air":      8,   # SDG 9
+        "apt":      6,   # SDG 11
+        "house":    4,   # SDG 11
+    }
+    building_score = sum(SDG_WEIGHTS.get(b["type"], 4) for b in unique)
 
     score = (
-        money_system.money * 2 +
-        player_health * 3 +
-        len(unique_buildings) * 5 +
-        upgraded * 10
+        building_score +
+        upgraded_once  * 20 +
+        upgraded_fully * 40 +
+        int(money_system.money * 0.5) +
+        player_health  * 2 +
+        survival_bonus
     )
-    return score, len(unique_buildings), upgraded
+
+    return score, total_buildings, upgraded_fully
 
 # Get top N leaderboard entries (default 10)
 def get_top_leaderboard(leaderboard, top_n=10):
     return leaderboard[:top_n]
+

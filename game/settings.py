@@ -14,13 +14,15 @@ PANEL_BROWN = (70, 40, 20)
 HIGHLIGHT = (255, 230, 120)
 
 # Screen scaling
-SCREEN_SCALE = 0.27
-SCALE = 0.27 # can be removed if same as SCREEN_SCALE
+SCREEN_SCALE = 0.22
+SCALE = 0.22
 
 # Menu
-MENU_WIDTH = 240
+MENU_WIDTH = 260
 
 # Game timers
-TIP_INTERVAL = 8000 # ms between tip messages
+TIP_INTERVAL = 14000 # ms between tip messages
 GAME_DURATION = 180000 # 3 minutes in ms
-BONUS_INTERVAL = 3000  # 3 seconds per bonus tick
+BONUS_INTERVAL = 7000  # 7 seconds per bonus tick
+
+BUILDABLE_GIDS = {9} # grey tile GID

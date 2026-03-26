@@ -1,5 +1,6 @@
 import pygame
 import random
+import os
 
 
 class BombingEvent:
@@ -13,6 +14,8 @@ class BombingEvent:
         self.shaking = False
         self.shake_start_time = 0
         self.sound = None
+        self.craters = [] # list of individual (tile_x, tile_y) tiles that are cratered
+        self.crater_patches = [] # list of patch origins for drawing one crater image per patch
 
         self.missile_active = False
         self.missile_pos = pygame.Vector2(0, 0)
@@ -20,7 +23,8 @@ class BombingEvent:
         self.flash_until = 0
 
     def load_sound(self, path):
-        self.sound = pygame.mixer.Sound(path)
+        if path and os.path.exists(path):
+            self.sound = pygame.mixer.Sound(path)
 
     def start_missile(self, target_pos):
         self.target_pos = pygame.Vector2(target_pos)

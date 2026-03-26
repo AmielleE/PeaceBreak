@@ -45,134 +45,260 @@ def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT, play_button
 def draw_name_input(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name):
     draw_map_func()
 
+    # Dark overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 150))
+    overlay.fill((0, 0, 0, 175))
     screen.blit(overlay, (0, 0))
 
-    text = font.render("Enter Name:", True, WHITE)
-    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+    # Center panel
+    panel_w, panel_h = 460, 280
+    panel_x = SCREEN_WIDTH  // 2 - panel_w // 2
+    panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
 
-    name_surface = font.render(player_name, True, WHITE)
-    screen.blit(name_surface, (SCREEN_WIDTH // 2 - name_surface.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
+    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (12, 14, 35, 240), (0, 0, panel_w, panel_h), border_radius=16)
+    pygame.draw.rect(panel_surf, (60, 160, 80, 220), (0, 0, panel_w, panel_h), 3, border_radius=16)
+    screen.blit(panel_surf, (panel_x, panel_y))
+
+    # Title
+    title_font = pygame.font.SysFont(None, 52)
+    title_surf = title_font.render("ENTER YOUR NAME", True, (255, 215, 0))
+    screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, panel_y + 28))
+
+    # Divider
+    pygame.draw.line(screen, (60, 160, 80), (panel_x + 30, panel_y + 80), (panel_x + panel_w - 30, panel_y + 80), 2)
+ 
+    # Subtitle
+    sub_font = pygame.font.SysFont(None, 26)
+    sub_surf = sub_font.render("Your name will appear on the leaderboard.", True, (160, 160, 160))
+    screen.blit(sub_surf, (SCREEN_WIDTH // 2 - sub_surf.get_width() // 2, panel_y + 94))
+
+    # Name input box
+    input_w, input_h = 360, 52
+    input_x = SCREEN_WIDTH // 2 - input_w // 2
+    input_y = panel_y + 138
+
+    input_surf = pygame.Surface((input_w, input_h), pygame.SRCALPHA)
+    pygame.draw.rect(input_surf, (25, 30, 55, 230), (0, 0, input_w, input_h), border_radius=10)
+    pygame.draw.rect(input_surf, (100, 220, 120, 200), (0, 0, input_w, input_h), 2, border_radius=10)
+    screen.blit(input_surf, (input_x, input_y))
+
+    # Typed name with blinking cursor
+    name_font = pygame.font.SysFont(None, 38)
+    cursor = "|" if (pygame.time.get_ticks() // 500) % 2 == 0 else ""
+    name_surf = name_font.render(player_name + cursor, True, (255, 255, 255))
+    screen.blit(name_surf, (SCREEN_WIDTH // 2 - name_surf.get_width() // 2, input_y + 12))
+
+    # Hint
+    hint_font = pygame.font.SysFont(None, 24)
+    hint_surf = hint_font.render("Press  ENTER  to start", True, (100, 160, 100))
+    screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, panel_y + 222))
 
 # leaderboard
 def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, leaderboard, title_font, font, small_font, game_over_reason):
     draw_map_func()
 
+    # Dark overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 150))
+    overlay.fill((0, 0, 0, 175))
     screen.blit(overlay, (0, 0))
 
-    title = title_font.render("Leaderboard", True, WHITE)
-    screen.blit(title, (SCREEN_WIDTH//2 - title.get_width() // 2, 50))
+    # Center panel
+    panel_w, panel_h = 520, 580
+    panel_x = SCREEN_WIDTH // 2 - panel_w // 2
+    panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
 
+    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (12, 14, 35, 240), (0, 0, panel_w, panel_h), border_radius=16)
+    pygame.draw.rect(panel_surf, (60, 160, 80, 220), (0, 0, panel_w, panel_h), 3, border_radius=16)
+    screen.blit(panel_surf, (panel_x, panel_y))
+
+    # Title
+    title_font2 = pygame.font.SysFont(None, 62)
+    title_surf = title_font2.render("LEADERBOARD", True, (255, 215, 0))
+    screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, panel_y + 22))
+
+    # Divider
+    pygame.draw.line(screen, (80, 100, 200), (panel_x + 30, panel_y + 80), (panel_x + panel_w - 30, panel_y + 80), 2)
+
+    # Game over reason
+    start_y = panel_y + 95
     if game_over_reason:
-        reason_text = font.render(game_over_reason, True, RED)
-        screen.blit(reason_text, (SCREEN_WIDTH//2 - reason_text.get_width() // 2, 120))
+        reason_font = pygame.font.SysFont(None, 28)
+        reason_surf = reason_font.render(game_over_reason, True, (220, 80, 80))
+        screen.blit(reason_surf, (SCREEN_WIDTH // 2 - reason_surf.get_width() // 2, start_y))
+        start_y += 34
 
-    start_y = 150 if not game_over_reason else 160
+    # Column headers
+    header_font = pygame.font.SysFont(None, 24)
+    rank_h = header_font.render("RANK", True, (120, 180, 120))
+    name_h = header_font.render("PLAYER", True, (120, 180, 120))
+    score_h = header_font.render("SCORE", True, (120, 180, 120))
+    screen.blit(rank_h, (panel_x + 30,  start_y))
+    screen.blit(name_h, (panel_x + 110, start_y))
+    screen.blit(score_h, (panel_x + 390, start_y))
+    start_y += 26
+
+    pygame.draw.line(screen, (60, 160, 80), (panel_x + 30, start_y), (panel_x + panel_w - 30, start_y), 1)
+    start_y += 8
+
+    # Entries
+    entry_font = pygame.font.SysFont(None, 28)
+    medal_colors = [(255, 215, 0), (192, 192, 192), (180, 100, 40)]
 
     for i, entry in enumerate(leaderboard[:10]):
-        line = font.render(f"{i+1}. {entry['name']} - {entry['score']}", True, WHITE)
-        screen.blit(line, (SCREEN_WIDTH//2 - line.get_width() // 2, start_y + i * 40))
+        row_y = start_y + i * 36
 
-    hint = small_font.render("Press R to return", True, WHITE)
-    screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 50))
+        # Highlight top 3
+        if i < 3:
+            row_surf = pygame.Surface((panel_w - 40, 30), pygame.SRCALPHA)
+            pygame.draw.rect(row_surf, (255, 215, 0, 18 - i * 5), (0, 0, panel_w - 40, 30), border_radius=6)
+            screen.blit(row_surf, (panel_x + 20, row_y - 2))
 
+        rank_color = medal_colors[i] if i < 3 else (180, 180, 180)
+        rank_surf  = entry_font.render(f"#{i+1}", True, rank_color)
+        name_surf  = entry_font.render(entry.get("name", "Unknown"), True, (220, 220, 220))
+        score_surf = entry_font.render(str(entry.get("score", 0)), True, (100, 220, 140))
+
+        screen.blit(rank_surf,  (panel_x + 30,  row_y))
+        screen.blit(name_surf,  (panel_x + 110, row_y))
+        screen.blit(score_surf, (panel_x + 390, row_y))
+
+    # Return hint
+    hint_font = pygame.font.SysFont(None, 26)
+    hint_surf = hint_font.render("Press  R  to return to menu", True, (100, 160, 100))
+    screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, panel_y + panel_h - 36))
+    
 # game UI
-def draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, message, message_timer, SCREEN_HEIGHT): 
-    money_system.draw(screen, font)
+def draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT):
+
+    panel_w, panel_h = 270, 125
+    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (15, 15, 35, 200), (0, 0, panel_w, panel_h), border_radius=10)
+    pygame.draw.rect(panel_surf, (60, 80, 140, 160), (0, 0, panel_w, panel_h), 2, border_radius=10)
+    screen.blit(panel_surf, (10, 10))
+
+    hud_font = pygame.font.SysFont(None, 22)
+    val_font = pygame.font.SysFont(None, 26)
+    tiny = pygame.font.SysFont(None, 18)
+
+    # Funds label + value
+    screen.blit(hud_font.render("FUNDS", True, (140, 140, 200)), (20, 18))
+    money_color = (255, 80, 80) if money_system.money < 50 else (100, 255, 140)
+    screen.blit(val_font.render(f"${money_system.money}", True, money_color), (20, 34))
+
+    # Lifeline label
+    screen.blit(hud_font.render("LIFELINE", True, (140, 140, 200)), (20, 58))
 
     # Health bar
-    bar_x, bar_y = 20, 60
-    bar_width, bar_height = 200, 20
+    bar_x, bar_y, bar_w, bar_h = 20, 76, 235, 11
+    pygame.draw.rect(screen, (60, 20, 20), (bar_x, bar_y, bar_w, bar_h), border_radius=5)
+    fill_w = int(bar_w * (player_health / 100))
 
-    pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, bar_width, bar_height))
-    current_width = int(bar_width * (player_health / 100))
-    pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, current_width, bar_height))
-    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
+    if player_health > 60:
+        bar_color = (60, 200, 80)
+    elif player_health > 30:
+        bar_color = (220, 180, 0)
+    else:
+        bar_color = (220, 50, 50)
 
+    pygame.draw.rect(screen, bar_color, (bar_x, bar_y, fill_w, bar_h), border_radius=5)
+    pygame.draw.rect(screen, (180, 180, 180), (bar_x, bar_y, bar_w, bar_h), 1, border_radius=5)
+    screen.blit(tiny.render(f"{player_health}%", True, (200, 200, 200)), (bar_x + bar_w + 4, bar_y))
+
+    # Selected building
     selected_label = BUILDING_DATA[selected_building]["label"] if selected_building else "None"
+    screen.blit(tiny.render(f"[B]  {selected_label} | Click tile to place", True, (200, 200, 140)), (20, 96))
+    screen.blit(tiny.render("Click building to upgrade",True, (100, 100, 100)), (20, 112))
 
-    help_text = small_font.render(f"B: Build Menu   Selected: {selected_label}", True, WHITE)
-    screen.blit(help_text, (20, 90))
-
-    # Message fade
-    if message:
-        elapsed = pygame.time.get_ticks() - message_timer
-        if elapsed < 2200:
-            alpha = 255 - int(elapsed / 2200 * 255)
-            text_surface = font.render(message, True, WHITE)
-            text_surface.set_alpha(alpha)
-            screen.blit(text_surface, (20, SCREEN_HEIGHT - 40))
+    money_system.draw(screen, val_font)
 
 # build menu
-def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT):
+def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
+                    menu_icons, BUILDING_DATA, selected_building,
+                    tiny_font, menu_title_font, SCREEN_HEIGHT):
+
     if menu_x >= SCREEN_WIDTH:
         return [], None
 
     slot_rects = []
+    
+    # Everything is anchored to the right edge of the screen
+    panel_w = 260
+    panel_x = SCREEN_WIDTH - panel_w  # always flush to right edge
 
-    # Shift panel image slightly left/up
-    panel_offset_x = -12
-    panel_offset_y = -15
-    panel_rect = pygame.Rect(menu_x + panel_offset_x, panel_offset_y, MENU_WIDTH, SCREEN_HEIGHT)
-
+    # Draw panel image scaled exactly to panel_w
     if menu_panel:
-        # scale panel image to fit menu width & height
-        panel_scaled = pygame.transform.scale(menu_panel, (MENU_WIDTH, SCREEN_HEIGHT))
-        screen.blit(panel_scaled, (menu_x + panel_offset_x, panel_offset_y))
+        panel_scaled = pygame.transform.scale(menu_panel, (panel_w, SCREEN_HEIGHT))
+        screen.blit(panel_scaled, (panel_x, 0))
     else:
-        pygame.draw.rect(screen, LIGHT_WOOD, panel_rect)
-        pygame.draw.rect(screen, DARK_WOOD, panel_rect, 6)
+        panel_surf = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.rect(panel_surf, (12, 14, 30, 230), (0, 0, panel_w, SCREEN_HEIGHT))
+        screen.blit(panel_surf, (panel_x, 0))
 
-    # Title
-    title_text = menu_title_font.render("Build Menu", True, WHITE)
-    screen.blit(title_text, (menu_x + 26, 18))
+    # Slots sized to fit strictly within the panel
+    slot_w  = 220
+    slot_h  = 95
+    slot_gap = 6
+    start_y  = 90
+    slot_x   = panel_x + (panel_w - slot_w) // 2  # centered inside panel
 
-    # Slots (start a little lower for proper panel frame)
-    slot_w, slot_h = 188, 68
-    slot_gap = 10
-    start_y = 100  # moved down slightly
-
-    mouse_pos = pygame.mouse.get_pos()
+    mouse_pos    = pygame.mouse.get_pos()
     hovered_type = None
 
-    for i, b_type in enumerate(MENU_ORDER):
-        slot_x = menu_x + 20
-        slot_y = start_y + i * (slot_h + slot_gap)
+    label_font = pygame.font.SysFont(None, 22)
+    stat_font  = pygame.font.SysFont(None, 19)
+    GOLD      = (255, 215, 0)
+    GREEN     = (100, 220, 120)
+    BLUE      = (100, 190, 255)
+    WHITE     = (255, 255, 255)
+    RED_COL   = (220, 100, 100)
+    HIGHLIGHT = (255, 230, 120)
 
-        rect = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
+    for i, b_type in enumerate(MENU_ORDER):
+        slot_y = start_y + i * (slot_h + slot_gap)
+        rect   = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
         slot_rects.append((rect, b_type))
 
         is_selected = selected_building == b_type
-        is_hovered = rect.collidepoint(mouse_pos)
-
+        is_hovered  = rect.collidepoint(mouse_pos)
         if is_hovered:
             hovered_type = b_type
 
-        pygame.draw.rect(screen, PANEL_BROWN, rect, border_radius=8)
-        border_color = HIGHLIGHT if is_selected else WHITE
-        border_width = 4 if is_selected else 2
-        pygame.draw.rect(screen, border_color, rect, border_width, border_radius=8)
+        # Slot background
+        slot_surf = pygame.Surface((slot_w, slot_h), pygame.SRCALPHA)
+        bg_color  = (60, 45, 20, 210) if is_selected else (30, 20, 10, 180)
+        pygame.draw.rect(slot_surf, bg_color, (0, 0, slot_w, slot_h), border_radius=10)
+        border_color = (*HIGHLIGHT, 255) if is_selected else (120, 80, 30, 200)
+        border_w = 3 if is_selected else 1
+        pygame.draw.rect(slot_surf, border_color, (0, 0, slot_w, slot_h), border_w, border_radius=10)
+        screen.blit(slot_surf, (slot_x, slot_y))
 
-        # Draw icon
+        # Icon
         icon = menu_icons[b_type]
-        icon_scaled = pygame.transform.scale(icon, (48, 48))
-        screen.blit(icon_scaled, (rect.x + 8, rect.y + 10))
+        icon_scaled = pygame.transform.scale(icon, (44, 44))
+        screen.blit(icon_scaled, (slot_x + 6, slot_y + 24))
 
-        # Draw label & cost
-        label = BUILDING_DATA[b_type]["label"]
-        cost = BUILDING_DATA[b_type]["cost"]
-        text1 = tiny_font.render(label, True, WHITE)
-        text2 = tiny_font.render(f"${cost}", True, GOLD)
-        screen.blit(text1, (rect.x + 64, rect.y + 12))
-        screen.blit(text2, (rect.x + 64, rect.y + 36))
+        data = BUILDING_DATA[b_type]
 
-    # Draw info box for hovered/selected type
-    info_type = hovered_type if hovered_type else selected_building
-    if info_type:
-        draw_menu_info_box(screen, info_type, BUILDING_DATA, menu_x, SCREEN_HEIGHT)
+        # Name
+        name_surf = label_font.render(data["label"], True, WHITE)
+        screen.blit(name_surf, (slot_x + 58, slot_y + 8))
+
+        # Cost
+        cost_surf = stat_font.render(f"Cost: ${data['cost']}", True, RED_COL)
+        screen.blit(cost_surf, (slot_x + 58, slot_y + 30))
+
+        # Income and health on separate lines
+        stat_y = slot_y + 50
+        if data["income"] > 0:
+            inc_surf = stat_font.render(f"+${data['income']}/tick", True, GREEN)
+            screen.blit(inc_surf, (slot_x + 58, stat_y))
+            stat_y += 18
+
+        if data["health"] > 0:
+            hp_surf = stat_font.render(f"+{data['health']} lifeline/tick", True, BLUE)
+            screen.blit(hp_surf, (slot_x + 58, stat_y))
 
     return slot_rects, hovered_type
 
@@ -220,9 +346,7 @@ def update_menu_animation(menu_open, menu_x, MENU_X_OPEN, MENU_X_CLOSED, menu_sp
     return menu_x
 
 # bomb animation
-def draw_bomb_animation(screen, bomb_img, bomb_anim_active,
-                         bomb_anim_start, BOMB_ANIM_DURATION,
-                         SCREEN_WIDTH, SCREEN_HEIGHT):
+def draw_bomb_animation(screen, bomb_img, bomb_anim_active, bomb_anim_start, BOMB_ANIM_DURATION, SCREEN_WIDTH, SCREEN_HEIGHT):
     
     if not bomb_anim_active or not bomb_img:
         return False
