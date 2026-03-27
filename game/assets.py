@@ -39,11 +39,15 @@ def load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT):
 
 def load_sounds(current_dir):
     sounds = {}
+
     bomb_sound_path = get_asset_path(current_dir, "assets", "sounds", "BOOM.wav")
     sounds["bomb_path"] = bomb_sound_path
 
     clang_path = get_asset_path(current_dir, "assets", "sounds", "CLANG.wav")
     sounds["clang"] = pygame.mixer.Sound(clang_path) if os.path.exists(clang_path) else None
+
+    bgm_path = get_asset_path(current_dir, "assets", "sounds", "background_music.wav")
+    sounds["bgm_path"] = bgm_path if os.path.exists(bgm_path) else None
 
     return sounds
 
