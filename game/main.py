@@ -6,6 +6,7 @@ import pytmx
 import os
 import json
 import random
+import math
 import sys
 
 from settings import *
@@ -142,6 +143,8 @@ last_bonus_tick = 0
 last_tip_time = 0
 start_time = 0
 msg_box = MessageBox()
+blocked_build_warning_tile = None
+blocked_build_warning_time = 0
 
 WAR_MESSAGES = [
     ("Airstrike detected nearby.", "Civilian infrastructure is the first casualty of war.", "war"),
@@ -193,6 +196,7 @@ def reset_game():
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time, game_over_reason, last_tip_time
     global people, last_person_spawn, leaderboard
+    global blocked_build_warning_tile, blocked_build_warning_time
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
@@ -214,7 +218,13 @@ def reset_game():
     selected_building = "house"
     last_bonus_tick = pygame.time.get_ticks()
     last_tip_time = pygame.time.get_ticks()
-    bombing.craters.clear() if bombing else None
+    blocked_build_warning_tile = None
+    blocked_build_warning_time = 0
+    
+    if bombing:
+        bombing.craters.clear()
+        bombing.crater_patches.clear()
+    #bombing.craters.clear() if bombing else None
 
 def draw_map_wrapper():
     draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, 0, 0)
@@ -222,18 +232,17 @@ def draw_map_wrapper():
 def get_random_bomb_target():
     unique_buildings = list(get_unique_buildings(buildings))
 
-    # If buildings exist, always target a building
     if unique_buildings:
         b = random.choice(unique_buildings)
 
-        min_x = min(tile[0] for tile in b["tiles"])
-        min_y = min(tile[1] for tile in b["tiles"])
+        center_tile_x = b["tiles"][0][0] + b["width"] // 2
+        center_tile_y = b["tiles"][0][1] + b["height"] // 2
 
-        center_x = int((min_x + b["width"] / 2) * scaled_tile_width)
-        center_y = int((min_y + b["height"] / 2) * scaled_tile_height)
-        return (center_x, center_y)
+        center_x = int((center_tile_x + 0.5) * scaled_tile_width)
+        center_y = int((center_tile_y + 0.5) * scaled_tile_height)
 
-    # Otherwise keep strikes in the central build area, not on outskirts
+        return (center_x, center_y), (center_tile_x, center_tile_y)
+
     min_x = int(SCREEN_WIDTH * 0.25)
     max_x = int(SCREEN_WIDTH * 0.75)
     min_y = int(SCREEN_HEIGHT * 0.18)
@@ -241,7 +250,37 @@ def get_random_bomb_target():
 
     rand_x = random.randint(min_x, max_x)
     rand_y = random.randint(min_y, max_y)
-    return (rand_x, rand_y)
+
+    tile_x = max(0, min(tmx_data.width - 1, rand_x // scaled_tile_width))
+    tile_y = max(0, min(tmx_data.height - 1, rand_y // scaled_tile_height))
+
+    return (rand_x, rand_y), (tile_x, tile_y)
+# build warning
+
+def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time):
+    if warning_tile is None:
+        return
+
+    if current_time - warning_time > 1200:
+        return
+
+    tile_x, tile_y = warning_tile
+
+    bob_offset = int(math.sin((current_time - warning_time) * 0.01) * 6)
+
+    center_x = tile_x * scaled_tile_width + scaled_tile_width // 2
+    draw_y = tile_y * scaled_tile_height - 18 + bob_offset
+
+    warning_font = pygame.font.SysFont(None, 34)
+    text = warning_font.render("!", True, (255, 60, 60))
+    outline = warning_font.render("!", True, (255, 255, 255))
+
+    text_rect = text.get_rect(center=(center_x, draw_y))
+
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        screen.blit(outline, text_rect.move(dx, dy))
+
+    screen.blit(text, text_rect)
 
 # --- Initial reset ---
 reset_game()
@@ -342,7 +381,20 @@ while running:
                     else:
                         b_type = selected_building
                         width, height = 3, 3
-                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
+
+                        footprint_tiles = []
+                        for dx in range(width):
+                            for dy in range(height):
+                                footprint_tiles.append((tile_x + dx, tile_y + dy))
+
+                        crater_set = set(bombing.craters)
+
+                        if any(t in crater_set for t in footprint_tiles):
+                            blocked_build_warning_tile = (tile_x + width // 2, tile_y)
+                            blocked_build_warning_time = pygame.time.get_ticks()
+                            msg_box.show("Cannot build here!", "Repair the crater first.", box_type="event", position="corner")
+
+                        elif can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
                             msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
@@ -432,14 +484,24 @@ while running:
         # Low money warning
         if money_system.money < 50 and not msg_box.active:
             msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
+            
+        if blocked_build_warning_tile is not None:
+            if current_time - blocked_build_warning_time > 1200:
+                blocked_build_warning_tile = None
 
         # Bombing update
         prev_health = player_health
         buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
         
         # Bombing update with central/building targeting
-        bomb_target = get_random_bomb_target()
-        player_health, shake_offset, bombed = bombing.update(player_health, buildable_tiles, buildings, bomb_target)
+        bomb_target_pos, bomb_target_tile = get_random_bomb_target()
+        player_health, shake_offset, bombed = bombing.update(
+            player_health,
+            buildable_tiles,
+            buildings,
+            bomb_target_pos,
+            bomb_target_tile
+        )
         if bombed:
             msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
                     
@@ -462,6 +524,8 @@ while running:
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         bombing.draw(screen, shake_x, shake_y)
         draw_people(screen, people)
+        
+        draw_blocked_build_warning(screen, blocked_build_warning_tile, blocked_build_warning_time, current_time)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)

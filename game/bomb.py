@@ -54,39 +54,54 @@ class BombingEvent:
         return patch
 
     def apply_crater(self, buildings, buildable_tiles):
-        if not self.pending_target_tile:
+        if self.pending_target_tile is None:
             return
 
         origin = self.pending_target_tile
-        patch  = self.get_connected_patch(origin, buildable_tiles)
 
+        # Small local crater patch instead of flood-filling the whole connected road
+        patch = [
+            origin,
+            (origin[0] - 1, origin[1]),
+            (origin[0] + 1, origin[1]),
+            (origin[0], origin[1] - 1),
+            (origin[0], origin[1] + 1),
+        ]
+
+        valid_patch = []
         for tile in patch:
+            x, y = tile
+            if x < 0 or y < 0:
+                continue
+            valid_patch.append(tile)
+
+        for tile in valid_patch:
             if tile not in self.craters:
                 self.craters.append(tile)
 
-        if patch:
-            min_x = min(t[0] for t in patch)
-            min_y = min(t[1] for t in patch)
-            max_x = max(t[0] for t in patch)
-            max_y = max(t[1] for t in patch)
-            self.crater_patches.append((min_x, min_y, max_x, max_y))
+        # draw crater image centered on impact tile
+        ox, oy = origin
+        self.crater_patches.append((ox, oy, ox, oy))
 
-        crater_set = set(self.craters)
-        to_remove = set()
+        # Damage buildings touching crater
+        damaged = set()
         for tile, building in list(buildings.items()):
-            for b_tile in building["tiles"]:
-                if b_tile in crater_set:
-                    for t in building["tiles"]:
-                        to_remove.add(t)
-                    break
+            if id(building) in damaged:
+                continue
 
-        for t in to_remove:
-            if t in buildings:
-                del buildings[t]
+            if any(b_tile in valid_patch for b_tile in building["tiles"]):
+                damaged.add(id(building))
+
+                if building["level"] > 0:
+                    building["level"] -= 1
+                else:
+                    for t in building["tiles"]:
+                        if t in buildings:
+                            del buildings[t]
 
         self.pending_target_tile = None
 
-    def update(self, player_health, buildable_tiles, buildings, target_pos=None):
+    def update(self, player_health, buildable_tiles, buildings, target_pos=None, target_tile=None):
         current_time = pygame.time.get_ticks()
         shake_offset = (0, 0)
         bombed = False
@@ -96,17 +111,7 @@ class BombingEvent:
             self.last_bomb = current_time
             if target_pos is not None:
                 self.start_missile(target_pos)
-                # Find nearest buildable tile to pixel target for crater
-                if buildable_tiles:
-                    from settings import SCALE
-                    nearest = min(
-                        buildable_tiles,
-                        key=lambda t: (
-                            (t[0] * 16 * SCALE - target_pos[0]) ** 2 +
-                            (t[1] * 16 * SCALE - target_pos[1]) ** 2
-                        )
-                    )
-                    self.pending_target_tile = nearest
+                self.pending_target_tile = target_tile
 
         # Move missile
         if self.missile_active:
