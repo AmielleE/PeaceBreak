@@ -79,6 +79,21 @@ bomb_img = images.get("bomb")
 crater_img = images.get("crater")
 clang_sound = sounds.get("clang")
 bomb_sound_path = sounds.get("bomb_path")
+bgm_path = sounds.get("bgm_path")
+
+#play music
+def play_bgm():
+    if bgm_path:
+        try:
+            if not pygame.mixer.music.get_busy():
+                pygame.mixer.music.load(bgm_path)
+                pygame.mixer.music.set_volume(0.13)  # adjust if too loud
+                pygame.mixer.music.play(-1)  # loop forever
+        except pygame.error as e:
+            print(f"[music] Failed to play BGM: {e}")
+
+def stop_bgm():
+    pygame.mixer.music.stop()
 
 # Load people sprites
 load_people_sprites()
@@ -275,12 +290,14 @@ while running:
              if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if instructions_continue_button.collidepoint(event.pos):
                     reset_game()
+                    play_bgm()
                     game_state = "game"
                 elif instructions_back_button.collidepoint(event.pos):
                     game_state = "name_input"
              elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     reset_game()
+                    play_bgm()
                     game_state = "game"
                 elif event.key == pygame.K_ESCAPE:
                     game_state = "name_input"
@@ -338,6 +355,7 @@ while running:
         elif game_state == "leaderboard":
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if leaderboard_back_button.collidepoint(event.pos):
+                    stop_bgm()
                     game_state = "title"
                 elif leaderboard_quit_button.collidepoint(event.pos):
                     running = False
@@ -399,6 +417,7 @@ while running:
             score, total, upgraded = calculate_score(money_system, player_health, buildings, start_time, GAME_DURATION)
             add_score(leaderboard, player_name, score)
             leaderboard = load_leaderboard()  # reload from DB so leaderboard shows latest scores
+            stop_bgm()
             game_state = "leaderboard"
 
         # Bombing interval scales with city size
