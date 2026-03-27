@@ -6,6 +6,8 @@ import pytmx
 import os
 import json
 import random
+import math
+import glob
 import sys
 
 from settings import *
@@ -142,6 +144,12 @@ last_bonus_tick = 0
 last_tip_time = 0
 start_time = 0
 msg_box = MessageBox()
+blocked_build_warning_tile = None
+blocked_build_warning_time = 0
+
+tip_sprite_images = []
+current_tip_sprite = None
+last_tip_box_timer = -1
 
 WAR_MESSAGES = [
     ("Airstrike detected nearby.", "Civilian infrastructure is the first casualty of war.", "war"),
@@ -193,6 +201,8 @@ def reset_game():
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time, game_over_reason, last_tip_time
     global people, last_person_spawn, leaderboard
+    global blocked_build_warning_tile, blocked_build_warning_time
+    global current_tip_sprite, last_tip_box_timer
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
@@ -214,7 +224,15 @@ def reset_game():
     selected_building = "house"
     last_bonus_tick = pygame.time.get_ticks()
     last_tip_time = pygame.time.get_ticks()
-    bombing.craters.clear() if bombing else None
+    blocked_build_warning_tile = None
+    blocked_build_warning_time = 0
+    current_tip_sprite = None
+    last_tip_box_timer = -1 
+    
+    if bombing:
+        bombing.craters.clear()
+        bombing.crater_patches.clear()
+    #bombing.craters.clear() if bombing else None
 
 def draw_map_wrapper():
     draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, 0, 0)
@@ -222,18 +240,17 @@ def draw_map_wrapper():
 def get_random_bomb_target():
     unique_buildings = list(get_unique_buildings(buildings))
 
-    # If buildings exist, always target a building
     if unique_buildings:
         b = random.choice(unique_buildings)
 
-        min_x = min(tile[0] for tile in b["tiles"])
-        min_y = min(tile[1] for tile in b["tiles"])
+        center_tile_x = b["tiles"][0][0] + b["width"] // 2
+        center_tile_y = b["tiles"][0][1] + b["height"] // 2
 
-        center_x = int((min_x + b["width"] / 2) * scaled_tile_width)
-        center_y = int((min_y + b["height"] / 2) * scaled_tile_height)
-        return (center_x, center_y)
+        center_x = int((center_tile_x + 0.5) * scaled_tile_width)
+        center_y = int((center_tile_y + 0.5) * scaled_tile_height)
 
-    # Otherwise keep strikes in the central build area, not on outskirts
+        return (center_x, center_y), (center_tile_x, center_tile_y)
+
     min_x = int(SCREEN_WIDTH * 0.25)
     max_x = int(SCREEN_WIDTH * 0.75)
     min_y = int(SCREEN_HEIGHT * 0.18)
@@ -241,7 +258,132 @@ def get_random_bomb_target():
 
     rand_x = random.randint(min_x, max_x)
     rand_y = random.randint(min_y, max_y)
-    return (rand_x, rand_y)
+
+    tile_x = max(0, min(tmx_data.width - 1, rand_x // scaled_tile_width))
+    tile_y = max(0, min(tmx_data.height - 1, rand_y // scaled_tile_height))
+
+    return (rand_x, rand_y), (tile_x, tile_y)
+# build warning
+
+def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time):
+    if warning_tile is None:
+        return
+
+    if current_time - warning_time > 1200:
+        return
+
+    tile_x, tile_y = warning_tile
+
+    bob_offset = int(math.sin((current_time - warning_time) * 0.01) * 6)
+
+    center_x = tile_x * scaled_tile_width + scaled_tile_width // 2
+    draw_y = tile_y * scaled_tile_height - 18 + bob_offset
+
+    warning_font = pygame.font.SysFont(None, 34)
+    text = warning_font.render("!", True, (255, 60, 60))
+    outline = warning_font.render("!", True, (255, 255, 255))
+
+    text_rect = text.get_rect(center=(center_x, draw_y))
+
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        screen.blit(outline, text_rect.move(dx, dy))
+
+    screen.blit(text, text_rect)
+
+def load_tip_sprites():
+    global tip_sprite_images
+
+    tip_sprite_images = []
+
+    citizens_folder = os.path.join(base_path, "assets", "images", "citizens")
+    if not os.path.exists(citizens_folder):
+        print(f"[tip sprites] Folder not found: {citizens_folder}")
+        return
+
+    for file_path in glob.glob(os.path.join(citizens_folder, "*.png")):
+        try:
+            sprite = pygame.image.load(file_path).convert_alpha()
+
+            target_h = 105
+            scale = target_h / sprite.get_height()
+            target_w = max(1, int(sprite.get_width() * scale))
+            sprite = pygame.transform.scale(sprite, (target_w, target_h))
+
+            tip_sprite_images.append(sprite)
+            print(f"[tip sprites] Loaded: {os.path.basename(file_path)}")
+        except pygame.error as e:
+            print(f"[tip sprites] Failed to load {file_path}: {e}")
+
+
+def update_tip_sprite_for_message():
+    global current_tip_sprite, last_tip_box_timer
+
+    if msg_box.active and msg_box.box_type == "game_tip":
+        if msg_box.timer != last_tip_box_timer:
+            last_tip_box_timer = msg_box.timer
+            if tip_sprite_images:
+                current_tip_sprite = random.choice(tip_sprite_images)
+    else:
+        current_tip_sprite = None
+        last_tip_box_timer = -1
+
+
+def draw_tip_sprite(screen):
+    if not current_tip_sprite:
+        return
+
+    # Match the bottom message box positioning from message_box.py
+    box_w = 480
+    box_h = 110
+    box_x = SCREEN_WIDTH // 2 - box_w // 2
+    box_y = SCREEN_HEIGHT - box_h - 30
+
+    # Put sprite very close to the left edge of the message box
+    gap = 2
+    x = box_x - current_tip_sprite.get_width() - gap
+
+    # Align sprite slightly above the bottom of the message box
+    y = box_y + box_h - current_tip_sprite.get_height() - 2
+
+    panel_w = current_tip_sprite.get_width() + 10
+    panel_h = current_tip_sprite.get_height() + 10
+
+    panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel, (0, 0, 0, 70), (0, 0, panel_w, panel_h), border_radius=8)
+
+    screen.blit(panel, (x - 5, y - 5))
+    screen.blit(current_tip_sprite, (x, y))
+
+
+def draw_game_timer(screen, current_time, start_time):
+    elapsed_ms = current_time - start_time
+    remaining_ms = max(0, GAME_DURATION - elapsed_ms)
+    remaining_seconds = remaining_ms // 1000
+
+    minutes = remaining_seconds // 60
+    seconds = remaining_seconds % 60
+
+    timer_text = f"Time Left: {minutes:02}:{seconds:02}"
+
+    timer_font = pygame.font.SysFont(None, 26)
+    text_surf = timer_font.render(timer_text, True, (255, 255, 255))
+
+    pad_x = 12
+    pad_y = 6
+    box_w = text_surf.get_width() + pad_x * 2
+    box_h = text_surf.get_height() + pad_y * 2
+
+    box_x = SCREEN_WIDTH // 2 - box_w // 2
+    box_y = 10
+
+    panel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel, (0, 0, 0, 105), (0, 0, box_w, box_h), border_radius=10)
+    pygame.draw.rect(panel, (220, 220, 220, 170), (0, 0, box_w, box_h), 2, border_radius=10)
+
+    screen.blit(panel, (box_x, box_y))
+    screen.blit(text_surf, (box_x + pad_x, box_y + pad_y))
+
+load_tip_sprites()
 
 # --- Initial reset ---
 reset_game()
@@ -252,6 +394,7 @@ shake_offset = (0, 0)
 
 while running:
     current_time = pygame.time.get_ticks()
+    update_tip_sprite_for_message() 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -342,9 +485,22 @@ while running:
                     else:
                         b_type = selected_building
                         width, height = 3, 3
-                        if can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
+
+                        footprint_tiles = []
+                        for dx in range(width):
+                            for dy in range(height):
+                                footprint_tiles.append((tile_x + dx, tile_y + dy))
+
+                        crater_set = set(bombing.craters)
+
+                        if any(t in crater_set for t in footprint_tiles):
+                            blocked_build_warning_tile = (tile_x + width // 2, tile_y)
+                            blocked_build_warning_time = pygame.time.get_ticks()
+                            msg_box.show("Cannot build here!", "Repair the crater first.", box_type="event", position="corner")
+
+                        elif can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
-                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
+                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip", position ="corner")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
@@ -391,13 +547,13 @@ while running:
         # Tips
         if current_time - last_tip_time > TIP_INTERVAL:
             last_tip_time = current_time
-            # Alternate between war and SDG tips
+
             if random.random() < 0.45:
-                pool = WAR_MESSAGES
+                msg, sub, _ = random.choice(WAR_MESSAGES)
+                msg_box.show(msg, sub, duration=7000, box_type="war", position="bottom")
             else:
-                pool = SDG_TIPS
-            msg, sub, mtype = random.choice(pool)
-            msg_box.show(msg, sub, duration=7000, box_type=mtype, position="bottom")
+                msg, sub, _ = random.choice(SDG_TIPS)
+                msg_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
@@ -432,14 +588,24 @@ while running:
         # Low money warning
         if money_system.money < 50 and not msg_box.active:
             msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
+            
+        if blocked_build_warning_tile is not None:
+            if current_time - blocked_build_warning_time > 1200:
+                blocked_build_warning_tile = None
 
         # Bombing update
         prev_health = player_health
         buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
         
         # Bombing update with central/building targeting
-        bomb_target = get_random_bomb_target()
-        player_health, shake_offset, bombed = bombing.update(player_health, buildable_tiles, buildings, bomb_target)
+        bomb_target_pos, bomb_target_tile = get_random_bomb_target()
+        player_health, shake_offset, bombed = bombing.update(
+            player_health,
+            buildable_tiles,
+            buildings,
+            bomb_target_pos,
+            bomb_target_tile
+        )
         if bombed:
             msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
                     
@@ -462,8 +628,13 @@ while running:
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         bombing.draw(screen, shake_x, shake_y)
         draw_people(screen, people)
+        
+        draw_blocked_build_warning(screen, blocked_build_warning_tile, blocked_build_warning_time, current_time)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
+        draw_game_timer(screen, current_time, start_time)
+        
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_tip_sprite(screen)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":

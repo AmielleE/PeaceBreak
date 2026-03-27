@@ -51,23 +51,25 @@ UPGRADE_COSTS = {
 def can_place_building(buildings, tile_x, tile_y, width, height, map_w, map_h, tmx_data, buildable_gids, craters=None):
     if craters is None:
         craters = []
-        
+
+    crater_set = set(craters)
+
     for dx in range(width):
         for dy in range(height):
             check_x = tile_x + dx
             check_y = tile_y + dy
 
-            # Bounds check
             if check_x < 0 or check_y < 0:
                 return False
             if check_x >= map_w or check_y >= map_h:
                 return False
 
-            # Already occupied
             if (check_x, check_y) in buildings:
                 return False
 
-            # Must be a buildable tile
+            if (check_x, check_y) in crater_set:
+                return False
+
             gid = get_tile_gid(tmx_data, check_x, check_y)
             if gid not in buildable_gids:
                 return False
