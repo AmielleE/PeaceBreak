@@ -1,65 +1,124 @@
-# Peace Break
+# PeaceBreak
+> **Rebuild. Survive. Resist.**
 
-Peace Break is a 2D strategy-based city-building game about infrastructure, resilience, and survival during conflict. Instead of focusing on combat, the game challenges players to build and manage a city, protect essential services, and recover from periodic attacks that damage civilian infrastructure.
+A 2D real-time strategy city-building game where players reconstruct a war-torn city 
+under periodic missile bombardment. Every building you place is an act of resistance.
 
-The goal is to keep the city functioning, maintain population growth, and make smart decisions about construction, rebuilding, and resource use.
+**itch.io:** https://amiellee.itch.io/peacebreak
 
-## Overview
+---
 
-Players build and manage a small city by placing structures such as housing and other essential infrastructure on a grid-based map. Each building has costs and durability, so every placement affects both city growth and long-term survival.
+## United Nations SDG Alignment
 
-As the game progresses, attacks damage existing structures. Players must respond by rebuilding, managing resources carefully, and maintaining the city under pressure.
+PeaceBreak is a game grounded in three United Nations Sustainable Development Goals:
 
-Peace Break is inspired by base-building mechanics, but its focus is on sustainability, resilience, and the human impact of conflict.
+| SDG | Connection to Gameplay |
+|-----|----------------------|
+| **SDG 9:** Industry, Innovation & Infrastructure | Players build and upgrade resilient infrastructure. The upgrade system (Brick to Concrete to Gold) models innovation investment. Bombing simulates infrastructure fragility under conflict. |
+| **SDG 11:** Sustainable Cities & Communities | Players manage a city with housing, healthcare, education, energy, and transportation. Placement restrictions model responsible urban planning. |
+| **SDG 16:** Peace, Justice & Strong Institutions | Bombing events are framed as consequences of conflict and institutional failure. War alert messages reference real humanitarian consequences throughout gameplay. |
 
-## Core Features
+---
 
-- Start a new game session
-- View the city map and building grid
-- Track player resources and turn number
-- Select and place buildings on valid grid tiles
-- Prevent invalid placement on occupied tiles
-- Prevent placement when resources are insufficient
-- Deduct resources after successful building placement
-- Advance turns and update city resources
-- Trigger raid or bombing events during gameplay
-- Apply damage to structures and remove destroyed buildings
-- Show feedback messages for important actions and events
-- Support saving and loading game data with SQLite
+## Gameplay Overview
 
-## Gameplay Focus
+- Make your city last 3 minutes in an active war zone
+- Place buildings on designated grey paved tiles to grow your city
+- Earn income and health bonuses every 10 seconds based on your buildings
+- Upgrade buildings through three tiers: **Brick to Concrete to Gold**
+- Survive periodic missile strikes that target and degrade your buildings
+- Manage your funds, if money or lifeline hits 0, the game ends
+- Score is calculated based on buildings placed, upgrades, health, funds, and survival time
+- Top scores are saved to a leaderboard backed by a SQLite database
 
-Peace Break is designed around:
-- city planning
-- infrastructure durability
-- resource management
-- recovery after attacks
-- strategic decision-making under pressure
+---
 
-The game connects to themes of sustainable infrastructure, resilient communities, and the social consequences of conflict.
+## Building Types
+
+| Building | Cost | Income | Lifeline |
+|----------|------|-------------|---------------|
+| House | $10 | +$5 | - |
+| Apartment | $18 | +$10 | - |
+| Hospital | $30 | +$5 | +10 |
+| School | $24 | +$3 | +5 |
+| Power Plant | $28 | +$32 | - |
+| Airport | $40 | +$25 | - |
+
+**Upgrade costs:** Brick to Concrete costs $15, Concrete to Gold costs $50
+
+---
+
+## Controls
+
+| Input | Action |
+|-------|--------|
+| `B` | Open/close build menu |
+| `Left Click` (on menu) | Select building type |
+| `Left Click` (on grey tile) | Place selected building |
+| `Left Click` (on building) | Upgrade building |
+| `R` | Return to title screen from leaderboard |
+| `ESC` | Go back/quit |
+
+---
 
 ## Tech Stack
 
-- **Python**
-- **Pygame**
-- **PySimpleGUI**
-- **SQLite**
+| Component | Technology |
+|-----------|-----------|
+| Game Engine | Python 3 + Pygame |
+| Tile Map | pytmx |
+| Database | SQLite3 |
+| Packaging | PyInstaller |
+| Deployment | itch.io |
+
+---
 
 ## Project Structure
+```
+PeaceBreak/
+├── game/
+│   ├── main.py          # Game loop, state machine, event handling
+│   ├── settings.py      # Global constants and configuration
+│   ├── assets.py        # Asset loading with PyInstaller path resolution
+│   ├── buildings.py     # Building data, placement, upgrade, bonus logic
+│   ├── bomb.py          # Missile system and building degradation
+│   ├── money.py         # Fund tracking and income cap
+│   ├── people.py        # Citizen sprites and movement
+│   ├── map_renderer.py  # TMX tile map and building rendering
+│   ├── ui.py            # All screen and HUD rendering
+│   ├── message_box.py   # Animated contextual message boxes
+│   ├── leaderboard.py   # Score persistence and leaderboard logic
+│   ├── database.py      # SQLite connection and schema management
+│   └── effects.py       # Screen shake utility
+├── assets/
+│   ├── images/          # Sprites, backgrounds, UI panels
+│   ├── buildings/       # Building sprites (brick/concrete/gold per type)
+│   ├── sounds/          # BOOM.wav, CLANG.wav, background_music.wav
+│   └── world.tmx        # Tiled map file
+├── data/
+│   └── PeaceBreak.db    # SQLite database (auto-created on first launch)
+└── README.md
+```
 
-Typical important files and folders include:
+---
 
-- `game/main.py` — main entry point
-- `game/` — core game logic modules
-- `data/` — game data
-- `sounds/` — audio assets
-- `buildings/` — building assets
-- `world.tmx` — map file
-- `title_screen.png` — title screen asset
+## Running from Source Code
 
-## Running the Game
-
-Install dependencies first:
-
+First, install the following requirements:
 ```bash
-pip install pygame pysimplegui
+pip install pygame pytmx pyinstaller
+```
+
+Then, run the game!
+```bash
+cd game
+python main.py
+```
+
+---
+
+## Play Now
+
+**itch.io:** https://amiellee.itch.io/peacebreak
+
+No Python installation is required, just download and run!
