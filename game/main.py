@@ -359,16 +359,8 @@ while running:
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
     
     elif game_state == "instructions":
-        draw_instructions_screen(
-            screen,
-            SCREEN_WIDTH,
-            SCREEN_HEIGHT,
-            title_font,
-            font,
-            small_font,
-            instructions_continue_button,
-            instructions_back_button
-        )
+        draw_map_wrapper()
+        draw_instructions_screen(screen,SCREEN_WIDTH,SCREEN_HEIGHT,title_font,font,small_font,instructions_continue_button,instructions_back_button)
     
     elif game_state == "game":
         # Menu animation

@@ -109,49 +109,96 @@ def draw_name_input(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, font, pl
     screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, panel_y + 222))
 
 def draw_instructions_screen(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, font, small_font, continue_button, back_button):
-    screen.fill((20, 30, 60))
+    # Map background with overlay
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 200))
+    screen.blit(overlay, (0, 0))
 
-    title_text = title_font.render("How to Play", True, (255, 255, 255))
-    title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 70))
-    screen.blit(title_text, title_rect)
+    # Center panel, same style as leaderboard
+    panel_w, panel_h = 620, 620
+    panel_x = SCREEN_WIDTH  // 2 - panel_w // 2
+    panel_y = SCREEN_HEIGHT // 2 - panel_h // 2
 
-    instructions = [
-        "Goal:",
-        "Rebuild the city and survive the bombing.",
-        "",
-        "Controls:",
-        "- Click a building slot in the build menu to select a building",
-        "- Press B to open or close the build menu",
-        "- Click on the map to place the selected building",
-        "- Click existing buildings to upgrade them",
-        "",
-        "Buildings:",
-        "- Houses and Apartments help grow the city",
-        "- Hospitals and Schools improve health",
-        "- Power Plants and Airports produce more money",
-        "",
-        "Game Over:",
-        "- The game ends if health reaches 0",
-        "- Or if time runs out / your lose condition triggers"
+    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (12, 14, 35, 240), (0, 0, panel_w, panel_h), border_radius=16)
+    pygame.draw.rect(panel_surf, (60, 160, 80, 220), (0, 0, panel_w, panel_h), 3, border_radius=16)
+    screen.blit(panel_surf, (panel_x, panel_y))
+
+    # Title
+    title_font2 = pygame.font.SysFont(None, 62)
+    title_surf  = title_font2.render("HOW TO PLAY", True, (255, 215, 0))
+    screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, panel_y + 22))
+
+    # Divider
+    pygame.draw.line(screen, (60, 160, 80), (panel_x + 30, panel_y + 80), (panel_x + panel_w - 30, panel_y + 80), 2)
+
+    # Sections
+    sections = [
+        ("Mission & SDG Goals",
+            [
+                "Rebuild a war-torn city and keep it alive under bombardment.",
+                "SDG 9: Build resilient infrastructure and foster innovation.",
+                "SDG 11: Make cities inclusive, safe, and sustainable.",
+                "SDG 16: Promote peace and strong institutions.",
+                "Every building you place is an act of resistance.",
+            ]
+        ),
+        (
+            "Controls",
+            [
+                "Press B to open or close the Build Menu.",
+                "Click a building in the menu to select it.",
+                "Click a grey paved tile on the map to place it.",
+                "Click an existing building to upgrade it.",
+            ]
+        ),
+        (
+            "Buildings",
+            [
+                "Houses & Apartments grow your city population.",
+                "Hospitals & Schools restore more lifeline over time.",
+                "Power Plants & Airports generate the most income.",
+                "Upgrade buildings: Brick to Concrete to Gold.",
+            ]
+        ),
+        (
+            "Game Over",
+            [
+                "Lifeline or funds hit 0, or the 3-minute timer expires.",
+                "Bombs target your buildings, upgrade to survive longer.",
+            ]
+        ),
     ]
 
-    start_y = 130
-    line_spacing = 28
+    header_font = pygame.font.SysFont(None, 24)
+    content_font = pygame.font.SysFont(None, 21)
+    current_y = panel_y + 95
 
-    for i, line in enumerate(instructions):
-        if line.endswith(":"):
-            text = font.render(line, True, (255, 220, 120))
-        else:
-            text = small_font.render(line, True, (255, 255, 255))
-        screen.blit(text, (80, start_y + i * line_spacing))
+    for header, lines in sections:
+        # Section header
+        header_surf = header_font.render(header, True, (255, 220, 100))
+        screen.blit(header_surf, (panel_x + 30, current_y))
+        current_y += 22
 
+        # Section lines
+        for line in lines:
+            line_surf = content_font.render(line, True, (210, 210, 210))
+            screen.blit(line_surf, (panel_x + 44, current_y))
+            current_y += 19
+
+        current_y += 10  # gap between sections
+
+    # Divider above buttons
+    pygame.draw.line(screen, (60, 160, 80), (panel_x + 30, panel_y + panel_h - 70), (panel_x + panel_w - 30, panel_y + panel_h - 70), 1)
+
+    # Buttons — same style as leaderboard
     mouse_pos = pygame.mouse.get_pos()
 
     continue_hovered = continue_button.collidepoint(mouse_pos)
     back_hovered = back_button.collidepoint(mouse_pos)
 
-    continue_color = (255, 70, 70) if continue_hovered else (220, 40, 40)
-    back_color = (170, 50, 50) if back_hovered else (110, 35, 35)
+    continue_color = (60, 130, 70) if continue_hovered else (40, 90, 50)
+    back_color = (255, 70, 70) if back_hovered else (180, 40, 40)
 
     pygame.draw.rect(screen, continue_color, continue_button, border_radius=10)
     pygame.draw.rect(screen, (255, 255, 255), continue_button, width=2, border_radius=10)
@@ -159,16 +206,15 @@ def draw_instructions_screen(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, fo
     pygame.draw.rect(screen, back_color, back_button, border_radius=10)
     pygame.draw.rect(screen, (255, 255, 255), back_button, width=2, border_radius=10)
 
-    continue_text = small_font.render("Continue", True, (255, 255, 255))
-    back_text = small_font.render("Back", True, (255, 255, 255))
+    btn_font = pygame.font.SysFont(None, 26)
+    continue_text = btn_font.render("Start Game", True, (255, 255, 255))
+    back_text = btn_font.render("Back", True, (255, 255, 255))
 
     screen.blit(continue_text, continue_text.get_rect(center=continue_button.center))
     screen.blit(back_text, back_text.get_rect(center=back_button.center))
 
 # leaderboard
-def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT,
-                     leaderboard, title_font, font, small_font,
-                     game_over_reason, back_button, quit_button):
+def draw_leaderboard(screen, draw_map_func, SCREEN_WIDTH, SCREEN_HEIGHT, leaderboard, title_font, font, small_font, game_over_reason, back_button, quit_button):
     draw_map_func()
 
     # Dark overlay
@@ -299,33 +345,39 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
         return [], None
 
     slot_rects = []
-    
-    # Everything is anchored to the right edge of the screen
     panel_w = 260
-    panel_x = SCREEN_WIDTH - panel_w  # always flush to right edge
 
-    # Draw panel image scaled exactly to panel_w
-    if menu_panel:
-        panel_scaled = pygame.transform.scale(menu_panel, (panel_w, SCREEN_HEIGHT))
-        screen.blit(panel_scaled, (panel_x, 0))
-    else:
-        panel_surf = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
-        pygame.draw.rect(panel_surf, (12, 14, 30, 230), (0, 0, panel_w, SCREEN_HEIGHT))
-        screen.blit(panel_surf, (panel_x, 0))
+    # Slide in from the right — panel is always flush to right edge
+    # but only draws as far left as menu_x allows
+    panel_surf = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (12, 14, 30, 220), (0, 0, panel_w, SCREEN_HEIGHT), border_radius=0)
+    pygame.draw.rect(panel_surf, (60, 160, 80, 180), (0, 0, panel_w, SCREEN_HEIGHT), 2)
 
-    # Slots sized to fit strictly within the panel
-    slot_w  = 220
-    slot_h  = 95
+    # Slide offset — how far the panel has slid in
+    slide_offset = SCREEN_WIDTH - menu_x  # 0 when closed, panel_w when fully open
+    draw_x = SCREEN_WIDTH - slide_offset
+    screen.blit(panel_surf, (draw_x, 0))
+
+    # Header
+    header_font = pygame.font.SysFont(None, 26)
+    header_surf = header_font.render("BUILD MENU", True, (255, 215, 0))
+    screen.blit(header_surf, (draw_x + panel_w // 2 - header_surf.get_width() // 2, 18))
+
+    pygame.draw.line(screen, (60, 160, 80),
+                     (draw_x + 15, 44),
+                     (draw_x + panel_w - 15, 44), 1)
+
+    slot_w   = 230
+    slot_h   = 95
     slot_gap = 6
-    start_y  = 90
-    slot_x   = panel_x + (panel_w - slot_w) // 2  # centered inside panel
+    start_y  = 55
+    slot_x   = draw_x + (panel_w - slot_w) // 2
 
     mouse_pos    = pygame.mouse.get_pos()
     hovered_type = None
 
     label_font = pygame.font.SysFont(None, 22)
     stat_font  = pygame.font.SysFont(None, 19)
-    GOLD      = (255, 215, 0)
     GREEN     = (100, 220, 120)
     BLUE      = (100, 190, 255)
     WHITE     = (255, 255, 255)
@@ -344,9 +396,9 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
 
         # Slot background
         slot_surf = pygame.Surface((slot_w, slot_h), pygame.SRCALPHA)
-        bg_color  = (60, 45, 20, 210) if is_selected else (30, 20, 10, 180)
+        bg_color  = (40, 80, 50, 220) if is_selected else (20, 25, 40, 200)
         pygame.draw.rect(slot_surf, bg_color, (0, 0, slot_w, slot_h), border_radius=10)
-        border_color = (*HIGHLIGHT, 255) if is_selected else (120, 80, 30, 200)
+        border_color = (*HIGHLIGHT, 255) if is_selected else (60, 160, 80, 160)
         border_w = 3 if is_selected else 1
         pygame.draw.rect(slot_surf, border_color, (0, 0, slot_w, slot_h), border_w, border_radius=10)
         screen.blit(slot_surf, (slot_x, slot_y))

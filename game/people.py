@@ -3,10 +3,8 @@ import math
 import os
 import pygame
 
-
 SPRITE_FOLDER = os.path.join("..", "assets", "images", "citizens")
 PEOPLE_SPRITES = []
-
 
 def load_people_sprites():
     global PEOPLE_SPRITES
@@ -45,7 +43,6 @@ def _get_unique_buildings(buildings):
 
     return unique
 
-
 def _building_point(building, scaled_tile_width, scaled_tile_height):
     top_left_tile = building["tiles"][0]
     tile_x, tile_y = top_left_tile
@@ -54,7 +51,6 @@ def _building_point(building, scaled_tile_width, scaled_tile_height):
     y = int((tile_y + building["height"]) * scaled_tile_height - 4)
 
     return x, y
-
 
 def _role_weight(building_type, role):
     if role == "origin":
@@ -87,11 +83,9 @@ def _role_weight(building_type, role):
 
     return 1
 
-
 def _weighted_pick(building_list, role):
     weights = [_role_weight(b["type"], role) for b in building_list]
     return random.choices(building_list, weights=weights, k=1)[0]
-
 
 def _max_people_for_count(building_count):
     if building_count < 3:
@@ -101,7 +95,6 @@ def _max_people_for_count(building_count):
     if building_count < 10:
         return 5
     return 8
-
 
 def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
     unique_buildings = _get_unique_buildings(buildings)
@@ -165,7 +158,6 @@ def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
 
     people.append(person)
 
-
 def update_people(people, buildings, scaled_tile_width, scaled_tile_height, last_spawn_time, current_time):
     unique_buildings = _get_unique_buildings(buildings)
     building_count = len(unique_buildings)
@@ -202,7 +194,6 @@ def update_people(people, buildings, scaled_tile_width, scaled_tile_height, last
 
     people[:] = remaining
     return last_spawn_time
-
 
 def draw_people(screen, people):
     for person in people:
