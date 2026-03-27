@@ -7,6 +7,7 @@ import os
 import json
 import random
 import math
+import glob
 import sys
 
 from settings import *
@@ -146,6 +147,10 @@ msg_box = MessageBox()
 blocked_build_warning_tile = None
 blocked_build_warning_time = 0
 
+tip_sprite_images = []
+current_tip_sprite = None
+last_tip_box_timer = -1
+
 WAR_MESSAGES = [
     ("Airstrike detected nearby.", "Civilian infrastructure is the first casualty of war.", "war"),
     ("Supply lines have been cut.", "Food and medicine shortages are spreading.", "war"),
@@ -197,6 +202,7 @@ def reset_game():
     global start_time, game_over_reason, last_tip_time
     global people, last_person_spawn, leaderboard
     global blocked_build_warning_tile, blocked_build_warning_time
+    global current_tip_sprite, last_tip_box_timer
 
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
@@ -220,6 +226,8 @@ def reset_game():
     last_tip_time = pygame.time.get_ticks()
     blocked_build_warning_tile = None
     blocked_build_warning_time = 0
+    current_tip_sprite = None
+    last_tip_box_timer = -1 
     
     if bombing:
         bombing.craters.clear()
@@ -282,6 +290,91 @@ def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time)
 
     screen.blit(text, text_rect)
 
+def load_tip_sprites():
+    global tip_sprite_images
+
+    tip_sprite_images = []
+
+    citizens_folder = os.path.join(base_path, "assets", "images", "citizens")
+    if not os.path.exists(citizens_folder):
+        print(f"[tip sprites] Folder not found: {citizens_folder}")
+        return
+
+    for file_path in glob.glob(os.path.join(citizens_folder, "*.png")):
+        try:
+            sprite = pygame.image.load(file_path).convert_alpha()
+
+            target_h = 105
+            scale = target_h / sprite.get_height()
+            target_w = max(1, int(sprite.get_width() * scale))
+            sprite = pygame.transform.scale(sprite, (target_w, target_h))
+
+            tip_sprite_images.append(sprite)
+            print(f"[tip sprites] Loaded: {os.path.basename(file_path)}")
+        except pygame.error as e:
+            print(f"[tip sprites] Failed to load {file_path}: {e}")
+
+
+def update_tip_sprite_for_message():
+    global current_tip_sprite, last_tip_box_timer
+
+    if msg_box.active and msg_box.box_type == "game_tip":
+        if msg_box.timer != last_tip_box_timer:
+            last_tip_box_timer = msg_box.timer
+            if tip_sprite_images:
+                current_tip_sprite = random.choice(tip_sprite_images)
+    else:
+        current_tip_sprite = None
+        last_tip_box_timer = -1
+
+
+def draw_tip_sprite(screen):
+    if not current_tip_sprite:
+        return
+
+    x = 20
+    y = SCREEN_HEIGHT - current_tip_sprite.get_height() - 20
+
+    panel_w = current_tip_sprite.get_width() + 16
+    panel_h = current_tip_sprite.get_height() + 16
+
+    panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel, (0, 0, 0, 80), (0, 0, panel_w, panel_h), border_radius=10)
+
+    screen.blit(panel, (x - 8, y - 8))
+    screen.blit(current_tip_sprite, (x, y))
+
+
+def draw_game_timer(screen, current_time, start_time):
+    elapsed_ms = current_time - start_time
+    remaining_ms = max(0, GAME_DURATION - elapsed_ms)
+    remaining_seconds = remaining_ms // 1000
+
+    minutes = remaining_seconds // 60
+    seconds = remaining_seconds % 60
+
+    timer_text = f"Time Left: {minutes:02}:{seconds:02}"
+
+    timer_font = pygame.font.SysFont(None, 26)
+    text_surf = timer_font.render(timer_text, True, (255, 255, 255))
+
+    pad_x = 12
+    pad_y = 6
+    box_w = text_surf.get_width() + pad_x * 2
+    box_h = text_surf.get_height() + pad_y * 2
+
+    box_x = SCREEN_WIDTH // 2 - box_w // 2
+    box_y = 10
+
+    panel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel, (0, 0, 0, 105), (0, 0, box_w, box_h), border_radius=10)
+    pygame.draw.rect(panel, (220, 220, 220, 170), (0, 0, box_w, box_h), 2, border_radius=10)
+
+    screen.blit(panel, (box_x, box_y))
+    screen.blit(text_surf, (box_x + pad_x, box_y + pad_y))
+
+load_tip_sprites()
+
 # --- Initial reset ---
 reset_game()
 
@@ -291,6 +384,7 @@ shake_offset = (0, 0)
 
 while running:
     current_time = pygame.time.get_ticks()
+    update_tip_sprite_for_message() 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -396,7 +490,7 @@ while running:
 
                         elif can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
-                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip")
+                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="game_tip")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
@@ -527,7 +621,10 @@ while running:
         
         draw_blocked_build_warning(screen, blocked_build_warning_tile, blocked_build_warning_time, current_time)
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
+        draw_game_timer(screen, current_time, start_time)
+        
         msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_tip_sprite(screen)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":
