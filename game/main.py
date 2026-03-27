@@ -332,16 +332,26 @@ def draw_tip_sprite(screen):
     if not current_tip_sprite:
         return
 
-    x = 20
-    y = SCREEN_HEIGHT - current_tip_sprite.get_height() - 20
+    # Match the bottom message box positioning from message_box.py
+    box_w = 480
+    box_h = 110
+    box_x = SCREEN_WIDTH // 2 - box_w // 2
+    box_y = SCREEN_HEIGHT - box_h - 30
 
-    panel_w = current_tip_sprite.get_width() + 16
-    panel_h = current_tip_sprite.get_height() + 16
+    # Put sprite very close to the left edge of the message box
+    gap = 2
+    x = box_x - current_tip_sprite.get_width() - gap
+
+    # Align sprite slightly above the bottom of the message box
+    y = box_y + box_h - current_tip_sprite.get_height() - 2
+
+    panel_w = current_tip_sprite.get_width() + 10
+    panel_h = current_tip_sprite.get_height() + 10
 
     panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-    pygame.draw.rect(panel, (0, 0, 0, 80), (0, 0, panel_w, panel_h), border_radius=10)
+    pygame.draw.rect(panel, (0, 0, 0, 70), (0, 0, panel_w, panel_h), border_radius=8)
 
-    screen.blit(panel, (x - 8, y - 8))
+    screen.blit(panel, (x - 5, y - 5))
     screen.blit(current_tip_sprite, (x, y))
 
 
@@ -490,7 +500,7 @@ while running:
 
                         elif can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
-                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="game_tip")
+                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip", position ="corner")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
@@ -537,13 +547,13 @@ while running:
         # Tips
         if current_time - last_tip_time > TIP_INTERVAL:
             last_tip_time = current_time
-            # Alternate between war and SDG tips
+
             if random.random() < 0.45:
-                pool = WAR_MESSAGES
+                msg, sub, _ = random.choice(WAR_MESSAGES)
+                msg_box.show(msg, sub, duration=7000, box_type="war", position="bottom")
             else:
-                pool = SDG_TIPS
-            msg, sub, mtype = random.choice(pool)
-            msg_box.show(msg, sub, duration=7000, box_type=mtype, position="bottom")
+                msg, sub, _ = random.choice(SDG_TIPS)
+                msg_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
