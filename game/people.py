@@ -2,16 +2,21 @@ import random
 import math
 import os
 import pygame
+import sys
 
-SPRITE_FOLDER = os.path.join("..", "assets", "images", "citizens")
 PEOPLE_SPRITES = []
 
 def load_people_sprites():
     global PEOPLE_SPRITES
     PEOPLE_SPRITES = []
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    sprite_folder_path = os.path.abspath(os.path.join(current_dir, SPRITE_FOLDER))
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.abspath(os.path.join(current_dir, ".."))
+
+    sprite_folder_path = os.path.join(base_path, "assets", "images", "citizens")
 
     if not os.path.exists(sprite_folder_path):
         print(f"[people.py] Sprite folder not found: {sprite_folder_path}")
