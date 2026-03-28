@@ -1,5 +1,6 @@
 from map_renderer import get_tile_gid
 
+# Building data and logic for placement, bonuses, and upgrades
 BUILDING_DATA = {
     "house": {
         "label": "House",
@@ -102,6 +103,7 @@ def get_unique_buildings(buildings):
 
     return unique
 
+# Count unique buildings for stats and bonuses
 def count_buildings(buildings):
     return len(set(id(b) for b in buildings.values()))
 

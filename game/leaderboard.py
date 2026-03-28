@@ -15,7 +15,7 @@ def get_leaderboard_path():
     return "leaderboard.json"
 
 def load_leaderboard():
-    # Load from SQLite, fall back to JSON if DB is empty.
+    # Load from SQLite, fall back to JSON if DB is empty
     try:
         entries = get_leaderboard_as_dicts()
         if entries:
@@ -70,12 +70,12 @@ def calculate_score(money_system, player_health, buildings, start_time, game_dur
 
     # SDG-weighted building types
     SDG_WEIGHTS = {
-        "hospital": 15,  # SDG 3 / SDG 11
-        "school":   12,  # SDG 4 / SDG 11
-        "power":    10,  # SDG 9
-        "air":      8,   # SDG 9
-        "apt":      6,   # SDG 11
-        "house":    4,   # SDG 11
+        "hospital": 15, # for SDG 11
+        "school": 12, # for SDG 11
+        "power": 10, # for SDG 9
+        "air": 8, # for SDG 9
+        "apt": 6, # for SDG 11
+        "house": 4, # for SDG 11
     }
     building_score = sum(SDG_WEIGHTS.get(b["type"], 4) for b in unique)
 

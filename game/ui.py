@@ -13,9 +13,7 @@ PANEL_BROWN = (70, 40, 20)
 HIGHLIGHT = (255, 230, 120)
 
 # title screen
-def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
-                      play_button, quit_button,
-                      title_font, subtitle_font, button_font):
+def draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,play_button, quit_button,title_font, subtitle_font, button_font):
     mouse_pos = pygame.mouse.get_pos()
 
     play_hovered = play_button.collidepoint(mouse_pos)
@@ -191,7 +189,7 @@ def draw_instructions_screen(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, fo
     # Divider above buttons
     pygame.draw.line(screen, (60, 160, 80), (panel_x + 30, panel_y + panel_h - 70), (panel_x + panel_w - 30, panel_y + panel_h - 70), 1)
 
-    # Buttons — same style as leaderboard
+    # Buttons (same style as leaderboard)
     mouse_pos = pygame.mouse.get_pos()
 
     continue_hovered = continue_button.collidepoint(mouse_pos)
@@ -337,9 +335,7 @@ def draw_ui_offset(screen, money_system, font, small_font, player_health, select
     money_system.draw(screen, val_font)
 
 # build menu
-def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
-                    menu_icons, BUILDING_DATA, selected_building,
-                    tiny_font, menu_title_font, SCREEN_HEIGHT):
+def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,menu_icons, BUILDING_DATA, selected_building,tiny_font, menu_title_font, SCREEN_HEIGHT):
 
     if menu_x >= SCREEN_WIDTH:
         return [], None
@@ -347,14 +343,13 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
     slot_rects = []
     panel_w = 260
 
-    # Slide in from the right — panel is always flush to right edge
-    # but only draws as far left as menu_x allows
+    # Slide in from the right
     panel_surf = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
     pygame.draw.rect(panel_surf, (12, 14, 30, 220), (0, 0, panel_w, SCREEN_HEIGHT), border_radius=0)
     pygame.draw.rect(panel_surf, (60, 160, 80, 180), (0, 0, panel_w, SCREEN_HEIGHT), 2)
 
-    # Slide offset — how far the panel has slid in
-    slide_offset = SCREEN_WIDTH - menu_x  # 0 when closed, panel_w when fully open
+    # Slide offset 
+    slide_offset = SCREEN_WIDTH - menu_x # 0 when closed, panel_w when fully open
     draw_x = SCREEN_WIDTH - slide_offset
     screen.blit(panel_surf, (draw_x, 0))
 
@@ -363,40 +358,38 @@ def draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel,
     header_surf = header_font.render("BUILD MENU", True, (255, 215, 0))
     screen.blit(header_surf, (draw_x + panel_w // 2 - header_surf.get_width() // 2, 18))
 
-    pygame.draw.line(screen, (60, 160, 80),
-                     (draw_x + 15, 44),
-                     (draw_x + panel_w - 15, 44), 1)
+    pygame.draw.line(screen, (60, 160, 80),(draw_x + 15, 44),(draw_x + panel_w - 15, 44), 1)
 
-    slot_w   = 230
-    slot_h   = 95
+    slot_w = 230
+    slot_h = 95
     slot_gap = 6
-    start_y  = 55
-    slot_x   = draw_x + (panel_w - slot_w) // 2
+    start_y = 55
+    slot_x = draw_x + (panel_w - slot_w) // 2
 
     mouse_pos    = pygame.mouse.get_pos()
     hovered_type = None
 
     label_font = pygame.font.SysFont(None, 22)
     stat_font  = pygame.font.SysFont(None, 19)
-    GREEN     = (100, 220, 120)
-    BLUE      = (100, 190, 255)
-    WHITE     = (255, 255, 255)
-    RED_COL   = (220, 100, 100)
+    GREEN = (100, 220, 120)
+    BLUE = (100, 190, 255)
+    WHITE = (255, 255, 255)
+    RED_COL = (220, 100, 100)
     HIGHLIGHT = (255, 230, 120)
 
     for i, b_type in enumerate(MENU_ORDER):
         slot_y = start_y + i * (slot_h + slot_gap)
-        rect   = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
+        rect = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
         slot_rects.append((rect, b_type))
 
         is_selected = selected_building == b_type
-        is_hovered  = rect.collidepoint(mouse_pos)
+        is_hovered = rect.collidepoint(mouse_pos)
         if is_hovered:
             hovered_type = b_type
 
         # Slot background
         slot_surf = pygame.Surface((slot_w, slot_h), pygame.SRCALPHA)
-        bg_color  = (40, 80, 50, 220) if is_selected else (20, 25, 40, 200)
+        bg_color = (40, 80, 50, 220) if is_selected else (20, 25, 40, 200)
         pygame.draw.rect(slot_surf, bg_color, (0, 0, slot_w, slot_h), border_radius=10)
         border_color = (*HIGHLIGHT, 255) if is_selected else (60, 160, 80, 160)
         border_w = 3 if is_selected else 1

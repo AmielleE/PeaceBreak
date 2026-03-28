@@ -7,7 +7,7 @@ class MoneySystem:
         self.interval = interval
         self.cap = cap 
         self.last_update = pygame.time.get_ticks()
-        self.animations = []  # floating money animations
+        self.animations = [] # floating money animations
 
     def update(self):
         current_time = pygame.time.get_ticks()

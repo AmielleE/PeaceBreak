@@ -2,11 +2,13 @@ import pygame
 import pytmx
 from settings import SCALE
 
+# Helper function to load and scale tile images
 def scale_surface(surface, scale):
     w = max(1, int(surface.get_width() * scale))
     h = max(1, int(surface.get_height() * scale))
     return pygame.transform.scale(surface, (w, h))
 
+# Draw the map with screen shake and bomb animation
 def draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, dx=0, dy=0):
     for layer in tmx_data.visible_layers:
         if isinstance(layer, pytmx.TiledTileLayer):
@@ -26,6 +28,7 @@ def draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, dx=
 
                 screen.blit(scaled_tile, (draw_x, draw_y))
 
+# helper function for building placement
 def draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, dx=0, dy=0):
     drawn = set()
 

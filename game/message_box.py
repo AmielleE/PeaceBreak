@@ -39,11 +39,11 @@ class MessageBox:
 
         # Box style per type
         type_styles = {
-            "tip":   {"border": (80, 160, 80),  "bg": (20, 50, 20),  "icon": "TIP"},
-            "game_tip": {"border": (80, 160, 80),  "bg": (20, 50, 20),  "icon": "TIP"},
-            "war":   {"border": (200, 40, 40),   "bg": (60, 10, 10),  "icon": "CONFLICT ALERT"},
-            "score": {"border": (200, 170, 0),   "bg": (50, 40, 0),   "icon": "MILESTONE"},
-            "event": {"border": (60, 120, 200),  "bg": (10, 25, 60),  "icon": "EVENT"},
+            "tip": {"border": (80, 160, 80), "bg": (20, 50, 20), "icon": "TIP"},
+            "game_tip": {"border": (80, 160, 80), "bg": (20, 50, 20), "icon": "TIP"},
+            "war": {"border": (200, 40, 40), "bg": (60, 10, 10), "icon": "CONFLICT ALERT"},
+            "score": {"border": (200, 170, 0), "bg": (50, 40, 0), "icon": "MILESTONE"},
+            "event": {"border": (60, 120, 200), "bg": (10, 25, 60), "icon": "EVENT"},
         }
         style = type_styles.get(self.box_type, type_styles["tip"])
 
@@ -65,7 +65,7 @@ class MessageBox:
         pygame.draw.rect(surf, border, (0, 0, box_w, box_h), 3, border_radius=12)
 
         # Icon/label bar
-        label_font = pygame.font.SysFont(None, 18)   # was 20
+        label_font = pygame.font.SysFont(None, 18)
         msg_font = pygame.font.SysFont(None, 20 if self.position == "corner" else 26)
         sub_font = pygame.font.SysFont(None, 17 if self.position == "corner" else 21)
 

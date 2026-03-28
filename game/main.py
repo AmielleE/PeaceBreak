@@ -27,16 +27,15 @@ from bomb import BombingEvent
 from people import load_people_sprites, update_people, draw_people
 from message_box import MessageBox
 
-# --- Pygame init ---
 pygame.init()
 pygame.mixer.init()
 
-# Temporary display for pytmx
+# display for pytmx
 screen = pygame.display.set_mode((1, 1))
 pygame.display.set_caption(TITLE)
 clock = pygame.time.Clock()
 
-# --- Map loading ---
+# Map loading
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 if getattr(sys, 'frozen', False):
@@ -50,7 +49,7 @@ tmx_data = pytmx.util_pygame.load_pygame(map_path)
 map_pixel_width = tmx_data.width * tmx_data.tilewidth
 map_pixel_height = tmx_data.height * tmx_data.tileheight
 
-# Use rounded tile scaling and derive screen size from tile grid
+# Rounded tile scaling and screen size from tile grid
 scaled_tile_width = max(1, round(tmx_data.tilewidth * SCALE))
 scaled_tile_height = max(1, round(tmx_data.tileheight * SCALE))
 scaled_map_width = tmx_data.width * scaled_tile_width
@@ -61,7 +60,7 @@ SCREEN_HEIGHT = scaled_map_height
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption(TITLE)
 
-# --- Fonts ---
+# Fonts
 font = pygame.font.SysFont(None, 36)
 title_font = pygame.font.SysFont(None, 84)
 subtitle_font = pygame.font.SysFont(None, 40)
@@ -70,7 +69,7 @@ small_font = pygame.font.SysFont(None, 28)
 tiny_font = pygame.font.SysFont(None, 20)
 menu_title_font = pygame.font.SysFont(None, 30)
 
-# --- Load assets ---
+# Load assets
 images = load_images(current_dir, SCREEN_WIDTH, SCREEN_HEIGHT)
 sounds = load_sounds(current_dir)
 building_images, menu_icons, types = load_buildings(current_dir)
@@ -83,7 +82,7 @@ clang_sound = sounds.get("clang")
 bomb_sound_path = sounds.get("bomb_path")
 bgm_path = sounds.get("bgm_path")
 
-#play music
+# play music
 def play_bgm():
     if bgm_path:
         try:
@@ -100,6 +99,7 @@ def stop_bgm():
 # Load people sprites
 load_people_sprites()
 
+# get tiles that can have buildings placed on them
 def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
     crater_set = set(craters)
     tiles = []
@@ -114,10 +114,9 @@ def get_buildable_tiles(tmx_data, buildings, buildable_gids, craters):
                 tiles.append((x, y))
     return tiles
 
-# --- Leaderboard ---
 leaderboard = load_leaderboard() or []
 
-# --- Game state ---
+# Game state
 money_system = None
 bombing = None
 player_health = 100
@@ -138,7 +137,7 @@ menu_x = MENU_X_CLOSED = SCREEN_WIDTH
 MENU_X_OPEN = SCREEN_WIDTH - MENU_WIDTH
 menu_open = False
 menu_speed = 24
-selected_building = "house"
+selected_building = "house" # default selected building in menu
 slot_rects = []
 last_bonus_tick = 0
 last_tip_time = 0
@@ -153,15 +152,11 @@ last_tip_box_timer = -1
 
 WAR_MESSAGES = [
     ("Airstrike detected nearby.", "Civilian infrastructure is the first casualty of war.", "war"),
-    ("Supply lines have been cut.", "Food and medicine shortages are spreading.", "war"),
-    ("Hospitals are overwhelmed.", "SDG 3: Good Health depends on stability.", "war"),
     ("Power grid damaged.", "Without energy, cities cannot function.", "war"),
     ("Displacement camps forming.", "SDG 11: Safe cities require peace.", "war"),
     ("Bridges destroyed.", "SDG 9: Infrastructure enables recovery.", "war"),
-    ("Schools closed due to conflict.", "An entire generation loses access to education.", "war"),
     ("International aid blocked.", "Corruption undermines SDG 16: Strong Institutions.", "war"),
     ("Refugee population rising.", "SDG 11 calls for inclusive, safe settlements.", "war"),
-    ("Clean water access lost.", "Conflict destroys decades of development overnight.", "war"),
 ]
 
 SDG_TIPS = [
@@ -173,28 +168,27 @@ SDG_TIPS = [
     ("Tip: Upgrading buildings increases resilience.", "SDG 9 calls for innovation in infrastructure.", "tip"),
     ("Tip: Airports connect your city to the world.", "SDG 9: Foster innovation through connectivity.", "tip"),
     ("Tip: Balance growth with sustainability.", "More buildings = more bombing frequency.", "tip"),
-    ("SDG 9: Over 1 billion people lack reliable electricity.", "Power plants are not a luxury — they are essential.", "tip"),
+    ("SDG 9: Over 1 billion people lack reliable electricity.", "Power plants are not a luxury, they are essential.", "tip"),
     ("SDG 11: 1 in 4 people live in informal settlements.", "Safe housing is a human right, not a privilege.", "tip"),
     ("SDG 16: Corruption costs $2.6 trillion annually.", "Strong institutions protect your city from within.", "tip"),
     ("Tip: Schools build long-term city resilience.", "Educated populations recover from conflict faster.", "tip"),
     ("SDG 9: Infrastructure investment drives GDP growth.", "Every dollar spent on infrastructure returns four.", "tip"),
     ("SDG 11: Green cities reduce disaster risk.", "Sustainable planning saves lives before crisis hits.", "tip"),
     ("Tip: Diversify your buildings.", "Cities that rely on one industry are fragile.", "tip"),
-    ("SDG 16: 2 billion people live in conflict-affected areas.", "Peace is not guaranteed — it must be built.", "tip"),
+    ("SDG 16: 2 billion people live in conflict-affected areas.", "Peace is not guaranteed, it must be built.", "tip"),
     ("SDG 9: Innovation closes the development gap.", "Technology and infrastructure lift communities out of poverty.", "tip"),
     ("Tip: Upgrade hospitals early.", "Health infrastructure is your city's lifeline in war.", "tip"),
-    ("SDG 11: Disaster-resilient cities save more lives.", "Build smart — not just fast.", "tip"),
+    ("SDG 11: Disaster-resilient cities save more lives.", "Build smart, not just fast.", "tip"),
     ("SDG 16: Access to justice protects the vulnerable.", "Without law, the powerful take from the powerless.", "tip"),
     ("Tip: Apartments house more people per tile.", "Dense housing is key to sustainable urban growth.", "tip"),
-    ("SDG 9: 2.7 billion people lack internet access.", "Connectivity is modern infrastructure — build toward it.", "tip"),
+    ("SDG 9: 2.7 billion people lack internet access.", "Connectivity is modern infrastructure, build toward it.", "tip"),
     ("SDG 11: Public services define a city's character.", "Schools and hospitals matter more than monuments.", "tip"),
     ("Tip: A bombed city can be rebuilt.", "Resilience means starting over without giving up.", "tip"),
 ]
 
 get_buildable_gids(tmx_data)
 
-
-# --- Game functions ---
+# Game functions
 def reset_game():
     global money_system, bombing, player_health, game_over
     global buildings, msg_box
@@ -232,11 +226,11 @@ def reset_game():
     if bombing:
         bombing.craters.clear()
         bombing.crater_patches.clear()
-    #bombing.craters.clear() if bombing else None
 
 def draw_map_wrapper():
     draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, 0, 0)
 
+# bombs will attack random buildings
 def get_random_bomb_target():
     unique_buildings = list(get_unique_buildings(buildings))
 
@@ -263,8 +257,8 @@ def get_random_bomb_target():
     tile_y = max(0, min(tmx_data.height - 1, rand_y // scaled_tile_height))
 
     return (rand_x, rand_y), (tile_x, tile_y)
-# build warning
 
+# build warning
 def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time):
     if warning_tile is None:
         return
@@ -290,6 +284,7 @@ def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time)
 
     screen.blit(text, text_rect)
 
+# for tips with citizens
 def load_tip_sprites():
     global tip_sprite_images
 
@@ -354,7 +349,7 @@ def draw_tip_sprite(screen):
     screen.blit(panel, (x - 5, y - 5))
     screen.blit(current_tip_sprite, (x, y))
 
-
+# for in-game clock countdown
 def draw_game_timer(screen, current_time, start_time):
     elapsed_ms = current_time - start_time
     remaining_ms = max(0, GAME_DURATION - elapsed_ms)
@@ -385,10 +380,10 @@ def draw_game_timer(screen, current_time, start_time):
 
 load_tip_sprites()
 
-# --- Initial reset ---
+# Initial reset
 reset_game()
 
-# --- Main loop ---
+# Main loop 
 running = True
 shake_offset = (0, 0)
 
@@ -400,7 +395,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        # --- Title screen input ---
+        # Title screen input
         elif game_state == "title":
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if play_button.collidepoint(event.pos):
@@ -416,7 +411,7 @@ while running:
                 elif event.key == pygame.K_ESCAPE:
                     running = False
 
-        # --- Name input ---
+        # Name input
         elif game_state == "name_input":
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN and player_name.strip():
@@ -428,7 +423,8 @@ while running:
                 else:
                     if len(player_name) < 10 and event.unicode.isprintable():
                         player_name += event.unicode
-                        
+
+        # Instructions screen input               
         elif game_state == "instructions":
              if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if instructions_continue_button.collidepoint(event.pos):
@@ -445,7 +441,7 @@ while running:
                 elif event.key == pygame.K_ESCAPE:
                     game_state = "name_input"
 
-        # --- Game input ---
+        # Game input
         elif game_state == "game":
             if event.type == pygame.KEYDOWN:
                 if game_over and event.key == pygame.K_r:
@@ -492,7 +488,7 @@ while running:
                                 footprint_tiles.append((tile_x + dx, tile_y + dy))
 
                         crater_set = set(bombing.craters)
-
+                        
                         if any(t in crater_set for t in footprint_tiles):
                             blocked_build_warning_tile = (tile_x + width // 2, tile_y)
                             blocked_build_warning_time = pygame.time.get_ticks()
@@ -507,7 +503,7 @@ while running:
                         else:
                             msg_box.show("Cannot place here!", "Build only on paved grey areas.", box_type="event", position="corner")
 
-        # --- Leaderboard input ---
+        # Leaderboard input
         elif game_state == "leaderboard":
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if leaderboard_back_button.collidepoint(event.pos):
@@ -521,13 +517,9 @@ while running:
                     game_state = "title"
                 elif event.key == pygame.K_ESCAPE:
                     running = False
-    # --- Game logic ---
+    # Game logic
     if game_state == "title":
-        draw_title_screen(
-            screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,
-            play_button, quit_button,
-            title_font, subtitle_font, button_font
-        )
+        draw_title_screen(screen, title_bg, SCREEN_WIDTH, SCREEN_HEIGHT,play_button, quit_button,title_font, subtitle_font, button_font)
     
     elif game_state == "name_input":
         draw_name_input(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT, font, player_name)
@@ -599,27 +591,14 @@ while running:
         
         # Bombing update with central/building targeting
         bomb_target_pos, bomb_target_tile = get_random_bomb_target()
-        player_health, shake_offset, bombed = bombing.update(
-            player_health,
-            buildable_tiles,
-            buildings,
-            bomb_target_pos,
-            bomb_target_tile
-        )
+        player_health, shake_offset, bombed = bombing.update(player_health,buildable_tiles,buildings,bomb_target_pos,bomb_target_tile)
         if bombed:
-            msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
+            msg_box.show("Your city was bombed!", "Rebuild and stay resilient (SDG 9).", box_type="war", position="corner")
                     
         # people update
-        last_person_spawn = update_people(
-        people,
-        buildings,
-        scaled_tile_width,
-        scaled_tile_height,
-        last_person_spawn,
-        current_time
-        )  
+        last_person_spawn = update_people(people,buildings,scaled_tile_width,scaled_tile_height,last_person_spawn,current_time)  
 
-        # --- Drawing ---
+        # Drawing
         screen.fill(BLACK)
         shake_x, shake_y = shake_offset
 
@@ -637,12 +616,9 @@ while running:
         draw_tip_sprite(screen)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
+    # leaderboard input
     elif game_state == "leaderboard":
-        draw_leaderboard(
-            screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT,
-            leaderboard, title_font, font, small_font, game_over_reason,
-            leaderboard_back_button, leaderboard_quit_button
-        )
+        draw_leaderboard(screen, draw_map_wrapper, SCREEN_WIDTH, SCREEN_HEIGHT,leaderboard, title_font, font, small_font, game_over_reason,leaderboard_back_button, leaderboard_quit_button)
        
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:

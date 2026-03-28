@@ -2,8 +2,8 @@ import sqlite3
 import os
 import sys
 
+# Get database path
 def get_db_path():
-    """Get database path that works both normally and when bundled with PyInstaller."""
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(sys.executable)
     else:
@@ -16,6 +16,7 @@ def get_db_path():
 def connect_db():
     return sqlite3.connect(get_db_path())
 
+# Create tables if they don't exist
 def create_tables():
     conn = connect_db()
     cursor = conn.cursor()
@@ -38,6 +39,7 @@ def create_tables():
     conn.commit()
     conn.close()
 
+# Player management functions
 def add_player(username):
     conn = connect_db()
     cursor = conn.cursor()
@@ -53,6 +55,7 @@ def get_player_id(username):
     conn.close()
     return row[0] if row else None
 
+# Score management functions
 def update_best_score(username, new_score):
     conn = connect_db()
     cursor = conn.cursor()

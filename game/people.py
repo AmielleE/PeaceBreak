@@ -30,7 +30,6 @@ def load_people_sprites():
     if not PEOPLE_SPRITES:
         print("[people.py] No citizen sprites found, rectangles will be used.")
 
-
 def _get_unique_buildings(buildings):
     unique = []
     seen = set()
@@ -52,6 +51,7 @@ def _building_point(building, scaled_tile_width, scaled_tile_height):
 
     return x, y
 
+# origin and destination selection with weighted probabilities based on building type and role
 def _role_weight(building_type, role):
     if role == "origin":
         if building_type == "house":
@@ -96,6 +96,7 @@ def _max_people_for_count(building_count):
         return 5
     return 8
 
+# load sprites at module level so they're ready when we spawn people
 def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
     unique_buildings = _get_unique_buildings(buildings)
 
@@ -145,13 +146,7 @@ def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
         "speed": speed,
         "width": sprite_width,
         "height": sprite_height,
-        "color": random.choice([
-            (30, 30, 30),
-            (60, 70, 130),
-            (120, 40, 40),
-            (90, 110, 60),
-            (140, 120, 80)
-        ]),
+        "color": random.choice([(30, 30, 30),(60, 70, 130),(120, 40, 40),(90, 110, 60),(140, 120, 80)]),
         "sprite": sprite,
         "sprite_scale": sprite_scale
     }

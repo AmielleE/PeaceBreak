@@ -24,13 +24,15 @@ class BombingEvent:
         if path and os.path.exists(path):
             self.sound = pygame.mixer.Sound(path)
 
-    def start_missile(self, target_pixel_pos):
+    # Sets up missile to fly towards target
+    def start_missile(self, target_pixel_pos): 
         self.target_pos = pygame.Vector2(target_pixel_pos)
         start_x = self.target_pos.x + random.randint(-120, 120)
         start_y = -80
         self.missile_pos = pygame.Vector2(start_x, start_y)
         self.missile_active = True
 
+    # Returns a list of connected buildable tiles starting from origin
     def get_connected_patch(self, origin, buildable_tiles):
         buildable_set = set(buildable_tiles)
         visited = set()
@@ -59,7 +61,7 @@ class BombingEvent:
 
         origin = self.pending_target_tile
 
-        # Small local crater patch instead of flood-filling the whole connected road
+        # Small local crater patch around impact tile
         patch = [
             origin,
             (origin[0] - 1, origin[1]),
@@ -116,16 +118,16 @@ class BombingEvent:
         # Move missile
         if self.missile_active:
             direction = self.target_pos - self.missile_pos
-            distance  = direction.length()
+            distance = direction.length()
 
             if distance <= self.missile_speed:
-                self.missile_pos    = self.target_pos
+                self.missile_pos = self.target_pos
                 self.missile_active = False
-                self.shaking        = True
+                self.shaking = True
                 self.shake_start_time = current_time
-                self.flash_until    = current_time + 220
-                player_health      -= self.damage
-                bombed              = True
+                self.flash_until = current_time + 220
+                player_health -= self.damage
+                bombed = True
 
                 if self.sound:
                     self.sound.play()
@@ -150,15 +152,12 @@ class BombingEvent:
         if self.missile_active:
             missile_x = int(self.missile_pos.x + dx)
             missile_y = int(self.missile_pos.y + dy)
-            pygame.draw.line(surface, (255, 170, 60),
-                             (missile_x, missile_y - 28),
-                             (missile_x, missile_y + 14), 6)
+            pygame.draw.line(surface, (255, 170, 60), (missile_x, missile_y - 28), (missile_x, missile_y + 14), 6)
             pygame.draw.circle(surface, (210, 210, 210), (missile_x, missile_y), 11)
-            pygame.draw.circle(surface, (80, 80, 80),    (missile_x, missile_y), 11, 2)
+            pygame.draw.circle(surface, (80, 80, 80), (missile_x, missile_y), 11, 2)
 
         if current_time < self.flash_until:
             flash = pygame.Surface((120, 120), pygame.SRCALPHA)
-            pygame.draw.circle(flash, (255, 170, 60, 170),  (60, 60), 38)
+            pygame.draw.circle(flash, (255, 170, 60, 170), (60, 60), 38)
             pygame.draw.circle(flash, (255, 235, 180, 220), (60, 60), 18)
-            surface.blit(flash, (int(self.target_pos.x - 60 + dx),
-                                 int(self.target_pos.y - 60 + dy)))
+            surface.blit(flash, (int(self.target_pos.x - 60 + dx), int(self.target_pos.y - 60 + dy)))
