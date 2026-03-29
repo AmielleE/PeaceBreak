@@ -143,10 +143,10 @@ slot_rects = []
 last_bonus_tick = 0
 last_tip_time = 0
 start_time = 0
-msg_box = MessageBox()
+corner_msg_box = MessageBox()
+bottom_tip_box = MessageBox()
 blocked_build_warning_tile = None
 blocked_build_warning_time = 0
-
 tip_sprite_images = []
 current_tip_sprite = None
 last_tip_box_timer = -1
@@ -197,7 +197,7 @@ get_buildable_gids(tmx_data)
 # --- Game functions ---
 def reset_game():
     global money_system, bombing, player_health, game_over
-    global buildings, msg_box
+    global buildings, corner_msg_box, bottom_tip_box
     global menu_open, menu_x, selected_building, last_bonus_tick
     global start_time, game_over_reason, last_tip_time
     global people, last_person_spawn, leaderboard
@@ -228,6 +228,9 @@ def reset_game():
     blocked_build_warning_time = 0
     current_tip_sprite = None
     last_tip_box_timer = -1 
+    
+    corner_msg_box = MessageBox()
+    bottom_tip_box = MessageBox()
     
     if bombing:
         bombing.craters.clear()
@@ -318,9 +321,9 @@ def load_tip_sprites():
 def update_tip_sprite_for_message():
     global current_tip_sprite, last_tip_box_timer
 
-    if msg_box.active and msg_box.box_type == "game_tip":
-        if msg_box.timer != last_tip_box_timer:
-            last_tip_box_timer = msg_box.timer
+    if bottom_tip_box.active and bottom_tip_box.box_type == "game_tip":
+        if bottom_tip_box.timer != last_tip_box_timer:
+            last_tip_box_timer = bottom_tip_box.timer
             if tip_sprite_images:
                 current_tip_sprite = random.choice(tip_sprite_images)
     else:
@@ -332,17 +335,13 @@ def draw_tip_sprite(screen):
     if not current_tip_sprite:
         return
 
-    # Match the bottom message box positioning from message_box.py
     box_w = 480
     box_h = 110
     box_x = SCREEN_WIDTH // 2 - box_w // 2
     box_y = SCREEN_HEIGHT - box_h - 30
 
-    # Put sprite very close to the left edge of the message box
     gap = 2
     x = box_x - current_tip_sprite.get_width() - gap
-
-    # Align sprite slightly above the bottom of the message box
     y = box_y + box_h - current_tip_sprite.get_height() - 2
 
     panel_w = current_tip_sprite.get_width() + 10
@@ -461,7 +460,7 @@ while running:
                     for rect, b_type in slot_rects:
                         if rect.collidepoint(event.pos):
                             selected_building = b_type
-                            msg_box.show(f"{BUILDING_DATA[b_type]['label']} selected", "Click a tile to place it.", box_type="tip", position="corner")
+                            corner_msg_box.show(f"{BUILDING_DATA[b_type]['label']} selected", "Click a tile to place it.", box_type="tip", position="corner")
                             click_handled = True
                             break
 
@@ -481,7 +480,7 @@ while running:
                     if clicked_tile in buildings:
                         building = buildings[clicked_tile]
                         result = try_upgrade_building(building, money_system, event.pos)
-                        msg_box.show(result, box_type="tip", position="corner")
+                        corner_msg_box.show(result, box_type="tip", position="corner")
                     else:
                         b_type = selected_building
                         width, height = 3, 3
@@ -496,16 +495,16 @@ while running:
                         if any(t in crater_set for t in footprint_tiles):
                             blocked_build_warning_tile = (tile_x + width // 2, tile_y)
                             blocked_build_warning_time = pygame.time.get_ticks()
-                            msg_box.show("Cannot build here!", "Repair the crater first.", box_type="event", position="corner")
+                            corner_msg_box.show("Cannot build here!", "Repair the crater first.", box_type="event", position="corner")
 
                         elif can_place_building(buildings, tile_x, tile_y, width, height, tmx_data.width, tmx_data.height, tmx_data, BUILDABLE_GIDS, bombing.craters):
                             place_building(buildings, tile_x, tile_y, selected_building, width, height)
-                            msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip", position ="corner")
+                            corner_msg_box.show(f"{BUILDING_DATA[selected_building]['label']} placed!", "Your city grows.", box_type="tip", position ="corner")
                             money_system.change_money(-BUILDING_DATA[selected_building]['cost'], (mouse_x, mouse_y))
                             if clang_sound:
                                 clang_sound.play()
                         else:
-                            msg_box.show("Cannot place here!", "Build only on paved grey areas.", box_type="event", position="corner")
+                            corner_msg_box.show("Cannot place here!", "Build only on paved grey areas.", box_type="event", position="corner")
 
         # --- Leaderboard input ---
         elif game_state == "leaderboard":
@@ -550,10 +549,10 @@ while running:
 
             if random.random() < 0.45:
                 msg, sub, _ = random.choice(WAR_MESSAGES)
-                msg_box.show(msg, sub, duration=7000, box_type="war", position="bottom")
+                bottom_tip_box.show(msg, sub, duration=7000, box_type="war", position="bottom")
             else:
                 msg, sub, _ = random.choice(SDG_TIPS)
-                msg_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
+                bottom_tip_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
 
         # End game conditions
         if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
@@ -586,8 +585,8 @@ while running:
             player_health, last_bonus_tick = apply_building_bonuses(buildings, money_system, player_health, last_bonus_tick, current_time, BONUS_INTERVAL)
 
         # Low money warning
-        if money_system.money < 50 and not msg_box.active:
-            msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
+        if money_system.money < 50 and not corner_msg_box.active:
+            corner_msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
             
         if blocked_build_warning_tile is not None:
             if current_time - blocked_build_warning_time > 1200:
@@ -607,7 +606,7 @@ while running:
             bomb_target_tile
         )
         if bombed:
-            msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
+            corner_msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
                     
         # people update
         last_person_spawn = update_people(
@@ -633,8 +632,9 @@ while running:
         draw_ui_offset(screen, money_system, font, small_font, player_health, selected_building, BUILDING_DATA, SCREEN_HEIGHT)
         draw_game_timer(screen, current_time, start_time)
         
-        msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+        bottom_tip_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         draw_tip_sprite(screen)
+        corner_msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
 
     elif game_state == "leaderboard":
