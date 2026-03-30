@@ -382,6 +382,68 @@ def draw_game_timer(screen, current_time, start_time):
     screen.blit(panel, (box_x, box_y))
     screen.blit(text_surf, (box_x + pad_x, box_y + pad_y))
 
+def draw_building_preview(screen, mouse_pos):
+    # only show preview during gameplay
+    if game_state != "game" or game_over:
+        return
+
+    # don't show preview if mouse is over the right-side menu
+    if mouse_pos[0] >= menu_x and menu_x < SCREEN_WIDTH:
+        return
+
+    tile_x = int(mouse_pos[0] / scaled_tile_width)
+    tile_y = int(mouse_pos[1] / scaled_tile_height)
+
+    width, height = 3, 3
+
+    # stay inside map bounds
+    if not (0 <= tile_x < tmx_data.width and 0 <= tile_y < tmx_data.height):
+        return
+
+    if (tile_x, tile_y) in buildings:
+        return
+    valid = can_place_building(
+        buildings,
+        tile_x,
+        tile_y,
+        width,
+        height,
+        tmx_data.width,
+        tmx_data.height,
+        tmx_data,
+        BUILDABLE_GIDS,
+        bombing.craters 
+    )
+
+    # choose preview color
+    if valid:
+        fill_color = (60, 220, 90, 70)
+        border_color = (80, 255, 120)
+    else:
+        fill_color = (220, 60, 60, 70)
+        border_color = (255, 90, 90)
+
+    # draw each tile in the footprint
+    for dx in range(width):
+        for dy in range(height):
+            preview_x = (tile_x + dx) * scaled_tile_width
+            preview_y = (tile_y + dy) * scaled_tile_height
+
+            # skip tiles outside visible map just in case
+            if preview_x < 0 or preview_y < 0:
+                continue
+
+            tile_surface = pygame.Surface((scaled_tile_width, scaled_tile_height), pygame.SRCALPHA)
+            tile_surface.fill(fill_color)
+            screen.blit(tile_surface, (preview_x, preview_y))
+
+            pygame.draw.rect(
+                screen,
+                border_color,
+                (preview_x, preview_y, scaled_tile_width, scaled_tile_height),
+                2
+            )
+
 load_tip_sprites()
 
 # --- Initial reset ---
@@ -625,6 +687,7 @@ while running:
         draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         draw_craters(screen, bombing.crater_patches, crater_img, scaled_tile_width, scaled_tile_height, shake_x, shake_y)        
         draw_buildings_offset(screen, buildings, building_images, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
+        draw_building_preview(screen, pygame.mouse.get_pos())
         bombing.draw(screen, shake_x, shake_y)
         draw_people(screen, people)
         
