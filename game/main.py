@@ -207,9 +207,15 @@ def reset_game():
     money_system = MoneySystem(start_amount=50, increment=0, interval=3000)
     bombing = BombingEvent(interval=30000, damage=20, shake_duration=500, missile_speed=7)
     bombing.load_sound(bomb_sound_path)
+    
+    if clang_sound:
+        clang_sound.set_volume(0.14)
+
+    if bombing.sound:
+        bombing.sound.set_volume(0.82)
 
     player_health = 100
-    msg_box = MessageBox()
+    #msg_box = MessageBox()
     game_over = False
     buildings.clear()
     
@@ -292,6 +298,45 @@ def draw_blocked_build_warning(screen, warning_tile, warning_time, current_time)
         screen.blit(outline, text_rect.move(dx, dy))
 
     screen.blit(text, text_rect)
+    
+def draw_game_over_overlay(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, font, small_font, game_over_reason):
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 165))
+    screen.blit(overlay, (0, 0))
+
+    shadow_text = title_font.render("GAME OVER", True, (40, 0, 0))
+    shadow_rect = shadow_text.get_rect(center=(SCREEN_WIDTH // 2 + 3, SCREEN_HEIGHT // 2 - 87))
+    screen.blit(shadow_text, shadow_rect)
+
+    title_text = title_font.render("GAME OVER", True, (210, 30, 30))
+    title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 90))
+    screen.blit(title_text, title_rect)
+
+    # Subtitle based on failure reason
+    if game_over_reason == "money":
+        line1 = "You didn't use your resources wisely."
+        line2 = "Sustainable cities need responsible planning — SDG 11."
+    elif game_over_reason == "health":
+        line1 = "You failed to defend your city."
+        line2 = "Peace, justice, and resilience matter — SDG 16."
+    elif game_over_reason == "time":
+        line1 = "Your city was not rebuilt in time."
+        line2 = "Innovation and resilience require action — SDG 9."
+    else:
+        line1 = "Your city could not endure the conflict."
+        line2 = "Recovery demands planning, resilience, and peace."
+
+    subtitle_text = font.render(line1, True, (240, 240, 240))
+    subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20))
+    screen.blit(subtitle_text, subtitle_rect)
+
+    sdg_text = small_font.render(line2, True, (220, 200, 120))
+    sdg_rect = sdg_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
+    screen.blit(sdg_text, sdg_rect)
+
+    restart_text = small_font.render("Press Enter to continue", True, (255, 255, 255))
+    restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 70))
+    screen.blit(restart_text, restart_rect)
 
 def load_tip_sprites():
     global tip_sprite_images
@@ -509,8 +554,8 @@ while running:
         # --- Game input ---
         elif game_state == "game":
             if event.type == pygame.KEYDOWN:
-                if game_over and event.key == pygame.K_r:
-                    game_state = "title"
+                if game_over and event.key == pygame.K_RETURN:
+                    game_state = "leaderboard"
                 elif not game_over and event.key == pygame.K_b:
                     menu_open = not menu_open
 
@@ -617,72 +662,100 @@ while running:
                 bottom_tip_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
 
         # End game conditions
-        if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
-            total = count_buildings(buildings)
-            upgraded = count_upgraded(buildings)
-            score = total * 5 + upgraded * 10 + max(0, player_health) * 3 + max(0, money_system.money) * 2
-
-            if player_health <= 0 and money_system.money <= 0:
-                game_over_reason = "Game Over! Health and money reached 0."
-            elif player_health <= 0:
-                game_over_reason = "Game Over! Health reached 0."
+        if not game_over and (current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0):
+            if player_health <= 0:
+                game_over_reason = "health"
             elif money_system.money <= 0:
-                game_over_reason = "Game Over! Money reached 0."
+                game_over_reason = "money"
             else:
-                game_over_reason = "Time is up."
+                game_over_reason = "time"
 
-            score, total, upgraded = calculate_score(money_system, player_health, buildings, start_time, GAME_DURATION)
+            score, total, upgraded = calculate_score(
+                money_system,
+                player_health,
+                buildings,
+                start_time,
+                GAME_DURATION
+            )
             add_score(leaderboard, player_name, score)
-            leaderboard = load_leaderboard()  # reload from DB so leaderboard shows latest scores
+            leaderboard = load_leaderboard()
+
             stop_bgm()
-            game_state = "leaderboard"
+            game_over = True
 
-        # Bombing interval scales with city size
-        building_count = len(get_unique_buildings(buildings))
-        bombing.interval = max(5000, 30000 - building_count * 400)
+        if not game_over:
+            # Bombing interval scales with city size
+            building_count = len(get_unique_buildings(buildings))
+            base_interval = max(5000, 30000 - building_count * 400)
 
-        # Money and bonuses
-        money_system.update()
-        if buildings:
-            player_health, last_bonus_tick = apply_building_bonuses(buildings, money_system, player_health, last_bonus_tick, current_time, BONUS_INTERVAL)
+            elapsed = current_time - start_time
+            if elapsed > GAME_DURATION // 2:
+                base_interval = int(base_interval * 0.35)  # adjust speed
 
-        # Low money warning
-        if money_system.money < 50 and not corner_msg_box.active:
-            corner_msg_box.show("Funds critically low!", "If your money hits $0, you lose the game.", duration=3000, box_type="war", position="corner")
-            
-        if blocked_build_warning_tile is not None:
-            if current_time - blocked_build_warning_time > 1200:
-                blocked_build_warning_tile = None
+            bombing.interval = max(3500, base_interval)
 
-        # Bombing update
-        prev_health = player_health
-        buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
-        
-        # Bombing update with central/building targeting
-        bomb_target_pos, bomb_target_tile = get_random_bomb_target()
-        player_health, shake_offset, bombed = bombing.update(
-            player_health,
-            buildable_tiles,
-            buildings,
-            bomb_target_pos,
-            bomb_target_tile
-        )
-        if bombed:
-            corner_msg_box.show("Your city was bombed!", "Rebuild and stay resilient — SDG 9.", box_type="war", position="corner")
-                    
-        # people update
-        last_person_spawn = update_people(
-        people,
-        buildings,
-        scaled_tile_width,
-        scaled_tile_height,
-        last_person_spawn,
-        current_time
-        )  
+            # Money and bonuses
+            money_system.update()
+            if buildings:
+                player_health, last_bonus_tick = apply_building_bonuses(
+                    buildings,
+                    money_system,
+                    player_health,
+                    last_bonus_tick,
+                    current_time,
+                    BONUS_INTERVAL
+                )
+
+            # Low money warning
+            if money_system.money < 50 and not corner_msg_box.active:
+                corner_msg_box.show(
+                    "Funds critically low!",
+                    "If your money hits $0, you lose the game.",
+                    duration=3000,
+                    box_type="war",
+                    position="corner"
+                )
+
+            if blocked_build_warning_tile is not None:
+                if current_time - blocked_build_warning_time > 1200:
+                    blocked_build_warning_tile = None
+
+            # Bombing update
+            buildable_tiles = get_buildable_tiles(tmx_data, buildings, BUILDABLE_GIDS, bombing.craters)
+
+            bomb_target_pos, bomb_target_tile = get_random_bomb_target()
+            player_health, shake_offset, bombed = bombing.update(
+                player_health,
+                buildable_tiles,
+                buildings,
+                bomb_target_pos,
+                bomb_target_tile
+            )
+
+            if bombed:
+                corner_msg_box.show(
+                    "Your city was bombed!",
+                    "Rebuild and stay resilient — SDG 9.",
+                    box_type="war",
+                    position="corner"
+                )
+
+            # people update
+            last_person_spawn = update_people(
+                people,
+                buildings,
+                scaled_tile_width,
+                scaled_tile_height,
+                last_person_spawn,
+                current_time
+            )       
 
         # --- Drawing ---
         screen.fill(BLACK)
-        shake_x, shake_y = shake_offset
+        if game_over:
+            shake_x, shake_y = 0, 0
+        else:
+            shake_x, shake_y = shake_offset
 
         draw_map_offset(screen, tmx_data, scaled_tile_width, scaled_tile_height, shake_x, shake_y)
         draw_craters(screen, bombing.crater_patches, crater_img, scaled_tile_width, scaled_tile_height, shake_x, shake_y)        
@@ -699,6 +772,16 @@ while running:
         draw_tip_sprite(screen)
         corner_msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
+        if game_over:
+            draw_game_over_overlay(
+                screen,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+                title_font,
+                font,
+                small_font,
+                game_over_reason
+            )
 
     elif game_state == "leaderboard":
         draw_leaderboard(
