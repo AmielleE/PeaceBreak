@@ -690,7 +690,7 @@ while running:
 
             elapsed = current_time - start_time
             if elapsed > GAME_DURATION // 2:
-                base_interval = int(base_interval * 0.35)  # adjust speed
+                base_interval = int(base_interval * 0.3)  # adjust speed
 
             bombing.interval = max(3500, base_interval)
 
