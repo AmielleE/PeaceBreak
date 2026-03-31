@@ -315,13 +315,13 @@ def draw_game_over_overlay(screen, SCREEN_WIDTH, SCREEN_HEIGHT, title_font, font
     # Subtitle based on failure reason
     if game_over_reason == "money":
         line1 = "You didn't use your resources wisely."
-        line2 = "Sustainable cities need responsible planning — SDG 11."
+        line2 = "Sustainable cities need responsible planning - SDG 11."
     elif game_over_reason == "health":
         line1 = "You failed to defend your city."
-        line2 = "Peace, justice, and resilience matter — SDG 16."
+        line2 = "Peace, justice, and resilience matter - SDG 16."
     elif game_over_reason == "time":
         line1 = "Your city was not rebuilt in time."
-        line2 = "Innovation and resilience require action — SDG 9."
+        line2 = "Innovation and resilience require action - SDG 9."
     else:
         line1 = "Your city could not endure the conflict."
         line2 = "Recovery demands planning, resilience, and peace."
@@ -662,13 +662,15 @@ while running:
                 bottom_tip_box.show(msg, sub, duration=7000, box_type="game_tip", position="bottom")
 
         # End game conditions
-        if not game_over and (current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0):
-            if player_health <= 0:
-                game_over_reason = "health"
+        if current_time - start_time >= GAME_DURATION or player_health <= 0 or money_system.money <= 0:
+            if player_health <= 0 and money_system.money <= 0:
+                game_over_reason = "Game Over! Health and money reached 0."
+            elif player_health <= 0:
+                game_over_reason = "Game Over! Health reached 0."
             elif money_system.money <= 0:
-                game_over_reason = "money"
+                game_over_reason = "Game Over! Money reached 0."
             else:
-                game_over_reason = "time"
+                game_over_reason = "Round Complete! Time is up."
 
             score, total, upgraded = calculate_score(
                 money_system,
@@ -681,7 +683,7 @@ while running:
             leaderboard = load_leaderboard()
 
             stop_bgm()
-            game_over = True
+            game_state = "leaderboard"
 
         if not game_over:
             # Bombing interval scales with city size
@@ -690,7 +692,7 @@ while running:
 
             elapsed = current_time - start_time
             if elapsed > GAME_DURATION // 2:
-                base_interval = int(base_interval * 0.35)  # adjust speed
+                base_interval = int(base_interval * 0.3)  # adjust speed
 
             bombing.interval = max(3500, base_interval)
 
@@ -772,16 +774,7 @@ while running:
         draw_tip_sprite(screen)
         corner_msg_box.draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         slot_rects, hovered_type = draw_build_menu(screen, menu_x, SCREEN_WIDTH, MENU_WIDTH, menu_panel, menu_icons, BUILDING_DATA, selected_building, tiny_font, menu_title_font, SCREEN_HEIGHT)
-        if game_over:
-            draw_game_over_overlay(
-                screen,
-                SCREEN_WIDTH,
-                SCREEN_HEIGHT,
-                title_font,
-                font,
-                small_font,
-                game_over_reason
-            )
+        
 
     elif game_state == "leaderboard":
         draw_leaderboard(
