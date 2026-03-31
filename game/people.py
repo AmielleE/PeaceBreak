@@ -2,16 +2,21 @@ import random
 import math
 import os
 import pygame
+import sys
 
-SPRITE_FOLDER = os.path.join("..", "assets", "images", "citizens")
 PEOPLE_SPRITES = []
 
 def load_people_sprites():
     global PEOPLE_SPRITES
     PEOPLE_SPRITES = []
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    sprite_folder_path = os.path.abspath(os.path.join(current_dir, SPRITE_FOLDER))
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.abspath(os.path.join(current_dir, ".."))
+
+    sprite_folder_path = os.path.join(base_path, "assets", "images", "citizens")
 
     if not os.path.exists(sprite_folder_path):
         print(f"[people.py] Sprite folder not found: {sprite_folder_path}")
@@ -29,7 +34,6 @@ def load_people_sprites():
 
     if not PEOPLE_SPRITES:
         print("[people.py] No citizen sprites found, rectangles will be used.")
-
 
 def _get_unique_buildings(buildings):
     unique = []
@@ -52,6 +56,7 @@ def _building_point(building, scaled_tile_width, scaled_tile_height):
 
     return x, y
 
+# origin and destination selection with weighted probabilities based on building type and role
 def _role_weight(building_type, role):
     if role == "origin":
         if building_type == "house":
@@ -96,6 +101,7 @@ def _max_people_for_count(building_count):
         return 5
     return 8
 
+# load sprites at module level so they're ready when we spawn people
 def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
     unique_buildings = _get_unique_buildings(buildings)
 
@@ -145,13 +151,7 @@ def spawn_person(people, buildings, scaled_tile_width, scaled_tile_height):
         "speed": speed,
         "width": sprite_width,
         "height": sprite_height,
-        "color": random.choice([
-            (30, 30, 30),
-            (60, 70, 130),
-            (120, 40, 40),
-            (90, 110, 60),
-            (140, 120, 80)
-        ]),
+        "color": random.choice([(30, 30, 30),(60, 70, 130),(120, 40, 40),(90, 110, 60),(140, 120, 80)]),
         "sprite": sprite,
         "sprite_scale": sprite_scale
     }
